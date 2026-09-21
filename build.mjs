@@ -1,0 +1,17 @@
+import {cp,mkdir,readFile,writeFile,rm} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
+await rm(new URL('./dist/',import.meta.url),{recursive:true,force:true});
+await mkdir('dist/server',{recursive:true});
+await mkdir('dist/.openai',{recursive:true});
+const paths=['index.html','styles.css','app.js','src/domain.js','src/i18n.js','src/store.js','src/icons.js'];
+const assets={};
+for(const path of paths)assets['/'+path]=await readFile(path,'utf8');
+const types={'.html':'text/html','.css':'text/css','.js':'text/javascript'};
+const domain=await readFile('src/domain.js','utf8');
+const handler=(await readFile('src/api-worker.js','utf8')).replace("import { validate } from './domain.js';",'');
+const worker=`${domain}\n${handler}\nconst assets=${JSON.stringify(assets)};\nconst types=${JSON.stringify(types)};\nexport default {async fetch(request,env){const p=new URL(request.url).pathname;if(p.startsWith('/api/')||p==='/health')return api(request,env);const key=p==='/'?'/index.html':p;const text=assets[key];if(text===undefined)return new Response('Not found',{status:404});return new Response(text,{headers:{'content-type':(types[key.slice(key.lastIndexOf('.'))]||'text/plain')+'; charset=utf-8','cache-control':'no-cache','x-content-type-options':'nosniff','referrer-policy':'same-origin','Content-Security-Policy':\"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'\"}})}};`;
+await writeFile('dist/server/index.js',worker);
+const hostingManifest=existsSync('.openai/hosting.json')?'.openai/hosting.json':'.openai/hosting.example.json';
+await cp(hostingManifest,'dist/.openai/hosting.json');
+await cp('drizzle','dist/.openai/drizzle',{recursive:true});
+console.log('Built Worker with application assets and migrations.');
