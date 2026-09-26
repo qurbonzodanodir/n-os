@@ -20,7 +20,7 @@ test('dashboard loads, seeds examples, persists them, and switches language', as
     }
     return new Response(JSON.stringify({workspace,revision}),{status:200,headers:{'content-type':'application/json'}});
   };
-  Object.assign(globalThis,{window,document:window.document,location:window.location,history:window.history,localStorage:window.localStorage,FormData:window.FormData,Blob:window.Blob,File:window.File,HTMLElement:window.HTMLElement,HTMLDialogElement:window.HTMLDialogElement,matchMedia:window.matchMedia,fetch});
+  Object.assign(globalThis,{window,document:window.document,location:window.location,history:window.history,localStorage:window.localStorage,sessionStorage:window.sessionStorage,FormData:window.FormData,Blob:window.Blob,File:window.File,HTMLElement:window.HTMLElement,HTMLDialogElement:window.HTMLDialogElement,matchMedia:window.matchMedia,fetch});
   const realSetInterval=globalThis.setInterval;
   globalThis.setInterval=()=>0;
   try{
