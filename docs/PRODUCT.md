@@ -1,4 +1,4 @@
-# NODIR OS specification update 2.0
+# n-os specification update 2.0
 
 This update supplements the original product and architecture specifications. The immediate release is a private, server-backed web prototype with public source code. The long-term target remains a modular production application. Original uploaded Word documents remain unchanged.
 

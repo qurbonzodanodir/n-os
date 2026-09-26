@@ -4,7 +4,7 @@ import {readFile} from 'node:fs/promises';
 import {Window} from 'happy-dom';
 
 test('dashboard loads, seeds examples, persists them, and switches language', async () => {
-  const window=new Window({url:'https://nodir-os.test/'});
+  const window=new Window({url:'https://n-os.test/'});
   window.document.write(await readFile(new URL('../index.html',import.meta.url),'utf8'));
   const media={matches:false,addEventListener(){},removeEventListener(){}};
   window.matchMedia=()=>media;
@@ -26,7 +26,7 @@ test('dashboard loads, seeds examples, persists them, and switches language', as
   try{
     await import(`../app.js?ui=${Date.now()}`);
     await new Promise(resolve=>setTimeout(resolve,0));
-    assert.match(document.title,/Сегодня/);
+    assert.equal(document.title,'Сегодня · n-os');
     const demo=document.querySelector('[data-action="demo"]');
     assert.ok(demo);
     demo.click();
@@ -37,7 +37,7 @@ test('dashboard loads, seeds examples, persists them, and switches language', as
     document.querySelector('[data-action="language"]').click();
     await new Promise(resolve=>setTimeout(resolve,0));
     assert.equal(lastSaved.settings.language,'en');
-    assert.match(document.title,/Today/);
+    assert.equal(document.title,'Today · n-os');
   } finally {
     globalThis.setInterval=realSetInterval;
     window.close();

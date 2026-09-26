@@ -1,4 +1,4 @@
-# NODIR OS
+# n-os
 
 A bilingual personal workspace with a Liquid Glass inspired interface. Public source code; the hosted workspace remains owner-private. No personal sample records or credentials are included in this repository.
 
