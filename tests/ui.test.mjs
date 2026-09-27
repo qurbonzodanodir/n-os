@@ -12,6 +12,7 @@ test('dashboard loads, seeds examples, persists them, and switches language', as
   const workspace={schema:2,settings:{name:'',language:'ru',theme:'system',timezone:'Asia/Dushanbe',currency:'TJS',weekStart:1,reducedTransparency:false},tasks:[],events:[],habits:[],notes:[],projects:[],goals:[],accounts:[],transactions:[],budgets:[],reviews:[]};
   let revision=0,lastSaved=null;
   const fetch=async (_url,options={})=>{
+    if(String(_url).startsWith('/api/prayer-times'))return new Response(JSON.stringify({date:'2026-09-27',timings:{Fajr:'05:00',Sunrise:'06:20',Dhuhr:'12:30',Asr:'16:00',Maghrib:'18:40',Isha:'20:00'},hijri:'16-04-1448',timezone:'Asia/Dushanbe'}),{status:200,headers:{'content-type':'application/json'}});
     if(options.method==='PUT'){
       const body=JSON.parse(options.body);
       assert.equal(body.revision,revision);
@@ -38,6 +39,11 @@ test('dashboard loads, seeds examples, persists them, and switches language', as
     await new Promise(resolve=>setTimeout(resolve,0));
     assert.equal(lastSaved.settings.language,'en');
     assert.equal(document.title,'Today · n-os');
+    document.querySelector('[data-action="view"][data-value="islam"]').click();
+    await new Promise(resolve=>setTimeout(resolve,10));
+    assert.match(document.title,/Islam/);
+    document.querySelector('[data-action="islam-tab"][data-value="surahs"]').click();
+    assert.ok(document.querySelector('[data-action="open-surah"]'));
   } finally {
     globalThis.setInterval=realSetInterval;
     window.close();

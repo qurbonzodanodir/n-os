@@ -1,11 +1,26 @@
 import { validate } from './domain.js';
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff'}});
 export async function api(request,env) {
-  const path=new URL(request.url).pathname;
+  const url=new URL(request.url),path=url.pathname;
   if(path==='/health') return json({ok:true});
-  if(path!=='/api/workspace') return json({error:'not_found'},404);
   const owner=request.headers.get('oai-authenticated-user-id');
   if(!owner) return json({error:'unauthorized'},401);
+  if(path==='/api/prayer-times'){
+    if(request.method!=='GET')return json({error:'method'},405);
+    const date=url.searchParams.get('date')||'';
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(date))return json({error:'date'},422);
+    const [year,month,day]=date.split('-');
+    try{
+      const endpoint=`https://api.aladhan.com/v1/timingsByCity/${day}-${month}-${year}?city=Dushanbe&country=Tajikistan&method=3&school=1`;
+      const response=await fetch(endpoint,{headers:{accept:'application/json'}});
+      if(!response.ok)throw Error('provider');
+      const result=await response.json(),data=result?.data;
+      if(!data?.timings)throw Error('provider');
+      const clean=Object.fromEntries(['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'].map(k=>[k,String(data.timings[k]||'').match(/^\d{2}:\d{2}/)?.[0]||'']));
+      return json({date,timings:clean,hijri:data.date?.hijri?.date||'',hijriMonth:data.date?.hijri?.month?.en||'',timezone:data.meta?.timezone||'Asia/Dushanbe',method:'Muslim World League',school:'Hanafi'});
+    }catch(error){console.error('prayer_times_failure',error?.name);return json({error:'prayer_times_unavailable'},502);}
+  }
+  if(path!=='/api/workspace') return json({error:'not_found'},404);
   if(!env.DB) return json({error:'storage_unavailable'},503);
   try {
     if(request.method==='GET') {

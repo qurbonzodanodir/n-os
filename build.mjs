@@ -3,7 +3,7 @@ import {existsSync} from 'node:fs';
 await rm(new URL('./dist/',import.meta.url),{recursive:true,force:true});
 await mkdir('dist/server',{recursive:true});
 await mkdir('dist/.openai',{recursive:true});
-const paths=['index.html','styles.css','app.js','sw.js','manifest.webmanifest','icon.svg','src/domain.js','src/i18n.js','src/store.js','src/icons.js'];
+const paths=['index.html','styles.css','app.js','sw.js','manifest.webmanifest','icon.svg','src/domain.js','src/i18n.js','src/store.js','src/icons.js','src/islam-content.js'];
 const assets={};
 for(const path of paths)assets['/'+path]=await readFile(path,'utf8');
 const binary={};

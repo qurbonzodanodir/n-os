@@ -47,3 +47,13 @@ test('workspace validation rejects cross-currency transfers', () => {
   w.transactions.push({id:'t',kind:'transfer',accountId:'a',toAccountId:'b',amount:100,date:'2026-09-04'});
   assert.throws(()=>validate(w),/transfer/);
 });
+
+test('schema 2 workspaces migrate without losing data and gain Islam progress', () => {
+  const legacy=emptyWorkspace();legacy.schema=2;delete legacy.islam;
+  legacy.notes.push({id:'n1',title:'Keep me',body:'',createdAt:'2026-09-01'});
+  validate(legacy);
+  assert.equal(legacy.schema,3);
+  assert.equal(legacy.notes[0].title,'Keep me');
+  assert.equal(legacy.islam.settings.city,'Dushanbe');
+  assert.deepEqual(legacy.islam.prayerLogs,{});
+});

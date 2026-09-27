@@ -9,7 +9,7 @@ for(const file of (await readdir('drizzle')).filter(f=>f.endsWith('.sql')).sort(
   if(!db.prepare('SELECT name FROM local_migrations WHERE name=?').get(file)){db.exec(await readFile('drizzle/'+file,'utf8'));db.prepare('INSERT INTO local_migrations VALUES (?)').run(file);}
 }
 const DB={prepare(sql){return {bind(...args){return {async first(){return db.prepare(sql).get(...args)||null;},async run(){const r=db.prepare(sql).run(...args);return {meta:{changes:Number(r.changes)}};}};}};}};
-const publicFiles=new Set(['index.html','styles.css','app.js','sw.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','src/domain.js','src/i18n.js','src/store.js','src/icons.js']);
+const publicFiles=new Set(['index.html','styles.css','app.js','sw.js','manifest.webmanifest','icon.svg','icon-192.png','icon-512.png','src/domain.js','src/i18n.js','src/store.js','src/icons.js','src/islam-content.js']);
 createServer(async(req,res)=>{
   try{
     const url=new URL(req.url,'http://localhost:'+ (process.env.PORT||4173));

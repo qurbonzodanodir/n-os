@@ -1,4 +1,8 @@
 export const collections = ['tasks','events','habits','notes','projects','goals','accounts','transactions','budgets','reviews'];
+export const defaultIslam = () => ({
+  settings:{city:'Dushanbe',country:'Tajikistan',method:3,school:1,reminderMinutes:15,notifications:false},
+  prayerLogs:{},surahProgress:{},azkar:{},arabicLessons:{}
+});
 export const id = () => crypto.randomUUID();
 export const iso = d => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 export const day = (date, delta=0) => { const d=new Date(date+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+delta); return iso(d); };
@@ -6,10 +10,15 @@ export function todayIn(timezone='Asia/Dushanbe', now=new Date()) {
   return new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 }
 export function emptyWorkspace() {
-  return {schema:2,settings:{name:'',language:'ru',theme:'system',timezone:'Asia/Dushanbe',currency:'TJS',weekStart:1,reducedTransparency:false},...Object.fromEntries(collections.map(k=>[k,[]]))};
+  return {schema:3,settings:{name:'',language:'ru',theme:'system',timezone:'Asia/Dushanbe',currency:'TJS',weekStart:1,reducedTransparency:false},...Object.fromEntries(collections.map(k=>[k,[]])),islam:defaultIslam()};
 }
 export function validate(w) {
-  if (!w || w.schema!==2 || !w.settings || !['ru','en'].includes(w.settings.language)) throw Error('invalid');
+  if(w?.schema===2){w.schema=3;w.islam=defaultIslam();}
+  if (!w || w.schema!==3 || !w.settings || !['ru','en'].includes(w.settings.language)) throw Error('invalid');
+  const defaults=defaultIslam();
+  if(!w.islam||typeof w.islam!=='object')w.islam=defaults;
+  w.islam.settings={...defaults.settings,...(w.islam.settings||{})};
+  for(const key of ['prayerLogs','surahProgress','azkar','arabicLessons'])if(!w.islam[key]||typeof w.islam[key]!=='object'||Array.isArray(w.islam[key]))throw Error('islam');
   try { todayIn(w.settings.timezone); } catch { throw Error('timezone'); }
   for (const c of collections) {
     if (!Array.isArray(w[c]) || w[c].length>3000) throw Error('limit');
