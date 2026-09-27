@@ -42,8 +42,14 @@ test('dashboard loads, seeds examples, persists them, and switches language', as
     document.querySelector('[data-action="view"][data-value="islam"]').click();
     await new Promise(resolve=>setTimeout(resolve,10));
     assert.match(document.title,/Islam/);
+    assert.equal(document.querySelector('[data-value="arabicStudy"]'),null);
     document.querySelector('[data-action="islam-tab"][data-value="surahs"]').click();
-    assert.ok(document.querySelector('[data-action="open-surah"]'));
+    assert.equal(document.querySelectorAll('[data-action="open-surah"]').length,12);
+    document.querySelector('[data-action="islam-tab"][data-value="azkar"]').click();
+    assert.equal(document.querySelectorAll('[data-action="zikr-category"]').length,6);
+    document.querySelector('[data-action="zikr-count"]').click();
+    await new Promise(resolve=>setTimeout(resolve,0));
+    assert.equal(Object.values(lastSaved.islam.azkar)[0]['morning-life'],1);
   } finally {
     globalThis.setInterval=realSetInterval;
     window.close();
