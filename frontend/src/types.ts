@@ -46,6 +46,13 @@ export interface Event extends IdentifiedRecord {
 export interface Habit extends IdentifiedRecord {
   completions: string[];
   weekdays?: number[];
+  goal?: string;
+  startDate?: string;
+  endDate?: string;
+  projectId?: string;
+  goalId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface WorkspaceSettings {
