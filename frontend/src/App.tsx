@@ -7,6 +7,7 @@ import { HabitsView } from "./components/HabitsView";
 import { LinksView } from "./components/LinksView";
 import { NotesView } from "./components/NotesView";
 import { ReviewView } from "./components/ReviewView";
+import { SettingsView } from "./components/SettingsView";
 import { TasksView } from "./components/TasksView";
 import { eventOccurs } from "./domain/calendar";
 import { habitIsDue } from "./domain/habits";
@@ -24,6 +25,7 @@ const navigation = [
   ["projects", "Проекты"],
   ["finance", "Финансы"],
   ["review", "Обзор недели"],
+  ["settings", "Настройки"],
 ] as const;
 
 export default function App() {
@@ -44,6 +46,14 @@ export default function App() {
       })
       .catch(() => setError("Не удалось подключиться к FastAPI"));
   }, []);
+
+  useEffect(() => {
+    if (!workspace) return;
+    const dark = workspace.settings.theme === "dark" || (workspace.settings.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.documentElement.dataset.reduced = String(workspace.settings.reducedTransparency);
+    document.documentElement.lang = workspace.settings.language;
+  }, [workspace]);
 
   async function persist(next: Workspace): Promise<boolean> {
     if (saving) return false;
@@ -115,7 +125,7 @@ export default function App() {
       </aside>
 
       <main className="content">
-        <header className="topbar"><span>n-os / {navigation.find(([key]) => key === active)?.[1]}</span><div className="sync-state">{saving ? "Сохранение…" : syncError || "Сохранено"}<button>RU</button></div></header>
+        <header className="topbar"><span>n-os / {navigation.find(([key]) => key === active)?.[1]}</span><div className="sync-state">{saving ? "Сохранение…" : syncError || "Сохранено"}<button onClick={() => persist({ ...structuredClone(workspace), settings: { ...workspace.settings, language: workspace.settings.language === "ru" ? "en" : "ru" } })}>{workspace.settings.language === "ru" ? "EN" : "RU"}</button></div></header>
         {syncError && <div className="error-banner" role="alert">{syncError}</div>}
         {active === "today" ? (
           <>
@@ -141,6 +151,8 @@ export default function App() {
           <FinanceView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : active === "review" ? (
           <ReviewView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
+        ) : active === "settings" ? (
+          <SettingsView workspace={workspace} saving={saving} onChange={persist} />
         ) : (
           <section className="hero"><div><p className="eyebrow">МИГРАЦИЯ ИНТЕРФЕЙСА</p><h1>{navigation.find(([key]) => key === active)?.[1]}</h1><p>Этот модуль будет перенесён следующим без изменения данных.</p></div></section>
         )}
