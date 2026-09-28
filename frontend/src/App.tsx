@@ -6,6 +6,7 @@ import { FinanceView } from "./components/FinanceView";
 import { HabitsView } from "./components/HabitsView";
 import { LinksView } from "./components/LinksView";
 import { NotesView } from "./components/NotesView";
+import { ReviewView } from "./components/ReviewView";
 import { TasksView } from "./components/TasksView";
 import { eventOccurs } from "./domain/calendar";
 import { habitIsDue } from "./domain/habits";
@@ -22,6 +23,7 @@ const navigation = [
   ["goals", "Цели"],
   ["projects", "Проекты"],
   ["finance", "Финансы"],
+  ["review", "Обзор недели"],
 ] as const;
 
 export default function App() {
@@ -137,6 +139,8 @@ export default function App() {
           <LinksView kind={active} workspace={workspace} today={summary.today} saving={saving} onChange={persist} onOpenTasks={(projectId) => { setTaskProject(projectId); setActive("tasks"); }} />
         ) : active === "finance" ? (
           <FinanceView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
+        ) : active === "review" ? (
+          <ReviewView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : (
           <section className="hero"><div><p className="eyebrow">МИГРАЦИЯ ИНТЕРФЕЙСА</p><h1>{navigation.find(([key]) => key === active)?.[1]}</h1><p>Этот модуль будет перенесён следующим без изменения данных.</p></div></section>
         )}
