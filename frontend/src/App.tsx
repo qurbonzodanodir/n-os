@@ -5,6 +5,7 @@ import { CalendarView } from "./components/CalendarView";
 import { FinanceView } from "./components/FinanceView";
 import { HabitsView } from "./components/HabitsView";
 import { LinksView } from "./components/LinksView";
+import { IslamView } from "./components/IslamView";
 import { NotesView } from "./components/NotesView";
 import { ReviewView } from "./components/ReviewView";
 import { SettingsView } from "./components/SettingsView";
@@ -20,6 +21,7 @@ const navigation = [
   ["tasks", "Задачи"],
   ["calendar", "Календарь"],
   ["habits", "Привычки"],
+  ["islam", "Ислам"],
   ["notes", "Заметки"],
   ["goals", "Цели"],
   ["projects", "Проекты"],
@@ -143,6 +145,8 @@ export default function App() {
           <CalendarView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : active === "habits" ? (
           <HabitsView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
+        ) : active === "islam" ? (
+          <IslamView workspace={workspace} today={summary.today} onChange={persist} />
         ) : active === "notes" ? (
           <NotesView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : active === "projects" || active === "goals" ? (

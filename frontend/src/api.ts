@@ -28,3 +28,6 @@ export const workspaceApi = {
       body: JSON.stringify({ workspace, revision }),
     }),
 };
+
+export interface PrayerTimes { date: string; timings: Record<string, string>; hijri: string; timezone: string; method: string; school: string }
+export const prayerApi = { read: (date: string) => json<PrayerTimes>(`/api/v1/prayer-times?date=${date}`, { cache: "no-store", headers: developmentHeaders }) };

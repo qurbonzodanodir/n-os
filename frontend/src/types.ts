@@ -84,6 +84,7 @@ export interface Account extends IdentifiedRecord { opening: number; currency: s
 export interface Transaction { id: string; kind: "income" | "expense" | "transfer"; amount: number; date: string; category?: string; title?: string; accountId: string; toAccountId?: string; createdAt?: string; updatedAt?: string }
 export interface Budget extends IdentifiedRecord { category: string; amount: number; monthKey: string; currency: string; createdAt?: string; updatedAt?: string }
 export interface Review { id: string; week: string; wins?: string; improve?: string; nextFocus?: string; createdAt?: string; updatedAt?: string }
+export interface IslamState { settings: { city: string; country: string; method: number; school: number; reminderMinutes: number; notifications: boolean }; prayerLogs: Record<string, string[]>; surahProgress: Record<string, boolean>; azkar: Record<string, Record<string, number>>; arabicLessons: Record<string, unknown> }
 
 export interface WorkspaceSettings {
   name: string;
@@ -108,7 +109,7 @@ export interface Workspace {
   transactions: Transaction[];
   budgets: Budget[];
   reviews: Review[];
-  islam: Record<string, unknown>;
+  islam: IslamState;
 }
 
 export interface WorkspaceEnvelope {
