@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { workspaceApi } from "./api";
 import { CalendarView } from "./components/CalendarView";
 import { HabitsView } from "./components/HabitsView";
+import { LinksView } from "./components/LinksView";
 import { NotesView } from "./components/NotesView";
 import { TasksView } from "./components/TasksView";
 import { eventOccurs } from "./domain/calendar";
@@ -29,6 +30,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncError, setSyncError] = useState("");
+  const [taskProject, setTaskProject] = useState("");
 
   useEffect(() => {
     workspaceApi
@@ -123,13 +125,15 @@ export default function App() {
             </section>
           </>
         ) : active === "tasks" ? (
-          <TasksView workspace={workspace} today={summary.today} saving={saving} onChange={persist} onToggle={complete} />
+          <TasksView workspace={workspace} today={summary.today} saving={saving} onChange={persist} onToggle={complete} initialProjectId={taskProject} />
         ) : active === "calendar" ? (
           <CalendarView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : active === "habits" ? (
           <HabitsView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : active === "notes" ? (
           <NotesView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
+        ) : active === "projects" || active === "goals" ? (
+          <LinksView kind={active} workspace={workspace} today={summary.today} saving={saving} onChange={persist} onOpenTasks={(projectId) => { setTaskProject(projectId); setActive("tasks"); }} />
         ) : (
           <section className="hero"><div><p className="eyebrow">МИГРАЦИЯ ИНТЕРФЕЙСА</p><h1>{navigation.find(([key]) => key === active)?.[1]}</h1><p>Этот модуль будет перенесён следующим без изменения данных.</p></div></section>
         )}

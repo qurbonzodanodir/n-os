@@ -68,6 +68,18 @@ export interface Note extends IdentifiedRecord {
   updatedAt?: string;
 }
 
+export interface Project extends IdentifiedRecord {
+  description?: string;
+  date?: string;
+  color?: "blue" | "violet" | "rose" | "green";
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Goal extends Project {
+  milestones?: Array<{ title: string; done: boolean }>;
+}
+
 export interface WorkspaceSettings {
   name: string;
   language: Language;
@@ -85,8 +97,8 @@ export interface Workspace {
   events: Event[];
   habits: Habit[];
   notes: Note[];
-  projects: IdentifiedRecord[];
-  goals: IdentifiedRecord[];
+  projects: Project[];
+  goals: Goal[];
   accounts: IdentifiedRecord[];
   transactions: Array<{ id: string; [key: string]: unknown }>;
   budgets: IdentifiedRecord[];

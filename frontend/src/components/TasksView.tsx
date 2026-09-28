@@ -11,6 +11,7 @@ interface Props {
   saving: boolean;
   onChange: (workspace: Workspace) => Promise<boolean>;
   onToggle: (taskId: string) => void;
+  initialProjectId?: string;
 }
 
 const statuses: TaskStatus[] = ["todo", "progress", "completed", "cancelled"];
@@ -46,10 +47,10 @@ function draft(today: string): Task {
   };
 }
 
-export function TasksView({ workspace, today, saving, onChange, onToggle }: Props) {
+export function TasksView({ workspace, today, saving, onChange, onToggle, initialProjectId = "" }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
   const [mode, setMode] = useState<Mode>("list");
-  const [projectId, setProjectId] = useState("");
+  const [projectId, setProjectId] = useState(initialProjectId);
   const [editing, setEditing] = useState<Task | null>(null);
 
   const tasks = useMemo(
