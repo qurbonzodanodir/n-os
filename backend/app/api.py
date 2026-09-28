@@ -3,6 +3,7 @@ from typing import Annotated
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from .auth import current_owner
@@ -17,6 +18,12 @@ Owner = Annotated[str, Depends(current_owner)]
 
 @router.get("/health")
 async def health() -> dict[str, bool]:
+    return {"ok": True}
+
+
+@router.get("/ready")
+async def ready(session: Session) -> dict[str, bool]:
+    await session.execute(text("SELECT 1"))
     return {"ok": True}
 
 
@@ -41,7 +48,10 @@ async def write_workspace(
 
 
 @router.get("/prayer-times")
-async def prayer_times(requested_date: Annotated[date, Query(alias="date")]) -> dict:
+async def prayer_times(
+    requested_date: Annotated[date, Query(alias="date")],
+    _owner: Owner,
+) -> dict:
     endpoint = f"https://api.aladhan.com/v1/timingsByCity/{requested_date:%d-%m-%Y}"
     params = {
         "city": "Dushanbe",

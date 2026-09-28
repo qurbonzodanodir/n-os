@@ -29,6 +29,12 @@ npm install
 npm run dev
 ```
 
+For a production-like PostgreSQL deployment, create `.env` from `.env.example`
+and run `docker compose up --build`. The frontend is served on port 8080 by
+default and proxies `/api` to FastAPI. Production must provide the trusted
+authenticated-user header at the edge; development identity headers are
+disabled in production mode.
+
 ## Run the legacy application locally
 
 Requires Node.js 24 or newer.
