@@ -2,7 +2,34 @@
 
 A bilingual personal workspace with a Liquid Glass inspired interface. Public source code; the hosted workspace remains owner-private. No personal sample records or credentials are included in this repository.
 
-## Run locally
+## Architecture migration
+
+The production rewrite now lives in two independent applications:
+
+- `frontend/` — React, TypeScript and Vite.
+- `backend/` — Python, FastAPI, SQLAlchemy and Alembic.
+
+The original JavaScript application remains runnable at the repository root
+until feature parity is complete. See `docs/MIGRATION.md` for the migration
+order and safety boundary.
+
+Run the new applications in separate terminals:
+
+```sh
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -e '.[dev]'
+uvicorn app.main:app --reload
+```
+
+```sh
+cd frontend
+npm install
+npm run dev
+```
+
+## Run the legacy application locally
 
 Requires Node.js 24 or newer.
 
