@@ -55,6 +55,19 @@ export interface Habit extends IdentifiedRecord {
   updatedAt?: string;
 }
 
+export interface Note extends IdentifiedRecord {
+  body: string;
+  folder?: string;
+  tags?: string;
+  color?: "blue" | "violet" | "rose" | "green";
+  pinned?: boolean;
+  archived?: boolean;
+  projectId?: string;
+  goalId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface WorkspaceSettings {
   name: string;
   language: Language;
@@ -71,7 +84,7 @@ export interface Workspace {
   tasks: Task[];
   events: Event[];
   habits: Habit[];
-  notes: IdentifiedRecord[];
+  notes: Note[];
   projects: IdentifiedRecord[];
   goals: IdentifiedRecord[];
   accounts: IdentifiedRecord[];

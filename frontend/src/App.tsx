@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { workspaceApi } from "./api";
 import { CalendarView } from "./components/CalendarView";
 import { HabitsView } from "./components/HabitsView";
+import { NotesView } from "./components/NotesView";
 import { TasksView } from "./components/TasksView";
 import { eventOccurs } from "./domain/calendar";
 import { habitIsDue } from "./domain/habits";
@@ -127,6 +128,8 @@ export default function App() {
           <CalendarView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : active === "habits" ? (
           <HabitsView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
+        ) : active === "notes" ? (
+          <NotesView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : (
           <section className="hero"><div><p className="eyebrow">МИГРАЦИЯ ИНТЕРФЕЙСА</p><h1>{navigation.find(([key]) => key === active)?.[1]}</h1><p>Этот модуль будет перенесён следующим без изменения данных.</p></div></section>
         )}
