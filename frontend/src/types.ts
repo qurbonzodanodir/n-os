@@ -31,6 +31,16 @@ export interface Event extends IdentifiedRecord {
   date: string;
   time: string;
   endTime: string;
+  description?: string;
+  location?: string;
+  repeat?: Repeat;
+  repeatUntil?: string;
+  reminder?: number;
+  taskId?: string;
+  projectId?: string;
+  goalId?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface Habit extends IdentifiedRecord {

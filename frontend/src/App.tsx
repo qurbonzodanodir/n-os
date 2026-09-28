@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { workspaceApi } from "./api";
+import { CalendarView } from "./components/CalendarView";
 import { TasksView } from "./components/TasksView";
+import { eventOccurs } from "./domain/calendar";
 import { toggleTask } from "./domain/tasks";
 import type { Workspace } from "./types";
 import { emptyWorkspace, todayIn } from "./workspace";
@@ -64,7 +66,7 @@ export default function App() {
     const today = todayIn(workspace.settings.timezone);
     const tasks = workspace.tasks.filter((task) => task.date === today);
     const completed = tasks.filter((task) => task.status === "completed").length;
-    const events = workspace.events.filter((event) => event.date === today);
+    const events = workspace.events.filter((event) => eventOccurs(event, today));
     return { today, tasks, completed, events };
   }, [workspace]);
 
@@ -105,6 +107,8 @@ export default function App() {
           </>
         ) : active === "tasks" ? (
           <TasksView workspace={workspace} today={summary.today} saving={saving} onChange={persist} onToggle={complete} />
+        ) : active === "calendar" ? (
+          <CalendarView workspace={workspace} today={summary.today} saving={saving} onChange={persist} />
         ) : (
           <section className="hero"><div><p className="eyebrow">МИГРАЦИЯ ИНТЕРФЕЙСА</p><h1>{navigation.find(([key]) => key === active)?.[1]}</h1><p>Этот модуль будет перенесён следующим без изменения данных.</p></div></section>
         )}
