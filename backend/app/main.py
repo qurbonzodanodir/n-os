@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 
 from .api import router
 from .config import get_settings
@@ -28,6 +29,17 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="n-os API", version="1.0.0", lifespan=lifespan)
+
+
+@app.middleware("http")
+async def limit_write_size(request: Request, call_next):
+    if request.method in {"POST", "PUT", "PATCH"}:
+        length = request.headers.get("content-length")
+        if length and int(length) > 1_500_000:
+            return JSONResponse({"detail": "payload_too_large"}, status_code=413)
+    return await call_next(request)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,

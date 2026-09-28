@@ -70,3 +70,28 @@ def test_workspace_rejects_unknown_schema() -> None:
             json={"workspace": payload, "revision": 0},
         )
     assert response.status_code == 422
+
+
+def test_workspace_rejects_cross_currency_transfer() -> None:
+    payload = workspace()
+    payload["accounts"] = [
+        {"id": "a", "title": "TJS", "opening": 0, "currency": "TJS"},
+        {"id": "b", "title": "USD", "opening": 0, "currency": "USD"},
+    ]
+    payload["transactions"] = [
+        {
+            "id": "transfer",
+            "kind": "transfer",
+            "amount": 100,
+            "date": "2026-09-28",
+            "accountId": "a",
+            "toAccountId": "b",
+        }
+    ]
+    with TestClient(app) as client:
+        response = client.put(
+            "/api/v1/workspace",
+            headers={"X-User-Id": f"test-{uuid4()}"},
+            json={"workspace": payload, "revision": 0},
+        )
+    assert response.status_code == 422
