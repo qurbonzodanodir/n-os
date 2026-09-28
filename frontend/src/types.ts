@@ -1,6 +1,8 @@
 export type Language = "ru" | "en";
 export type Theme = "light" | "dark" | "system";
 export type TaskStatus = "todo" | "progress" | "completed" | "cancelled";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+export type Repeat = "none" | "daily" | "weekly" | "monthly";
 
 export interface IdentifiedRecord {
   id: string;
@@ -12,7 +14,17 @@ export interface Task extends IdentifiedRecord {
   status: TaskStatus;
   date?: string;
   time?: string;
-  priority?: "low" | "medium" | "high";
+  description?: string;
+  priority?: TaskPriority;
+  repeat?: Repeat;
+  projectId?: string;
+  goalId?: string;
+  tags?: string;
+  completedAt?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+  sourceId?: string;
+  subtasks?: Array<{ title: string; done: boolean }>;
 }
 
 export interface Event extends IdentifiedRecord {

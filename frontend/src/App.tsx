@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { workspaceApi } from "./api";
+import { TasksView } from "./components/TasksView";
+import { toggleTask } from "./domain/tasks";
 import type { Workspace } from "./types";
 import { emptyWorkspace, todayIn } from "./workspace";
 
@@ -17,15 +19,45 @@ const navigation = [
 
 export default function App() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [revision, setRevision] = useState(0);
   const [active, setActive] = useState("today");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [syncError, setSyncError] = useState("");
 
   useEffect(() => {
     workspaceApi
       .read()
-      .then((result) => setWorkspace(result.workspace ?? emptyWorkspace()))
+      .then((result) => {
+        setWorkspace(result.workspace ?? emptyWorkspace());
+        setRevision(result.revision);
+      })
       .catch(() => setError("Не удалось подключиться к FastAPI"));
   }, []);
+
+  async function persist(next: Workspace): Promise<boolean> {
+    if (saving) return false;
+    setSaving(true);
+    setSyncError("");
+    try {
+      const result = await workspaceApi.save(next, revision);
+      setWorkspace(next);
+      setRevision(result.revision);
+      return true;
+    } catch (reason) {
+      setSyncError((reason as { status?: number }).status === 409
+        ? "Данные изменились на другом устройстве. Обновите страницу."
+        : "Не удалось сохранить изменения.");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function complete(taskId: string) {
+    if (!workspace) return;
+    void persist(toggleTask(workspace, taskId, todayIn(workspace.settings.timezone)));
+  }
 
   const summary = useMemo(() => {
     if (!workspace) return null;
@@ -60,16 +92,19 @@ export default function App() {
       </aside>
 
       <main className="content">
-        <header className="topbar"><span>n-os / {navigation.find(([key]) => key === active)?.[1]}</span><button>RU</button></header>
+        <header className="topbar"><span>n-os / {navigation.find(([key]) => key === active)?.[1]}</span><div className="sync-state">{saving ? "Сохранение…" : syncError || "Сохранено"}<button>RU</button></div></header>
+        {syncError && <div className="error-banner" role="alert">{syncError}</div>}
         {active === "today" ? (
           <>
             <section className="hero"><div><p className="eyebrow">ДОБРО ПОЖАЛОВАТЬ</p><h1>Сегодня в фокусе</h1><p>Все важные дела в одном месте.</p></div><time>{summary.today}</time></section>
             <section className="grid">
               <article className="card momentum"><div><p>ПРОГРЕСС ДНЯ</p><h2>{summary.completed}/{summary.tasks.length} задач</h2></div><strong>{summary.tasks.length ? Math.round(summary.completed / summary.tasks.length * 100) : 0}%</strong></article>
-              <article className="card"><h2>Задачи на сегодня</h2>{summary.tasks.length ? summary.tasks.map((task) => <div className="row" key={task.id}><span className={task.status === "completed" ? "check done" : "check"}>✓</span><div><strong>{task.title}</strong><small>{task.time || "Без времени"}</small></div></div>) : <p className="muted">На сегодня задач нет</p>}</article>
+              <article className="card"><h2>Задачи на сегодня</h2>{summary.tasks.length ? summary.tasks.map((task) => <div className="row" key={task.id}><button className={task.status === "completed" ? "check done" : "check"} onClick={() => complete(task.id)} aria-label={`Выполнить: ${task.title}`}>✓</button><div><strong>{task.title}</strong><small>{task.time || "Без времени"}</small></div></div>) : <p className="muted">На сегодня задач нет</p>}</article>
               <article className="card"><h2>Расписание</h2>{summary.events.length ? summary.events.map((event) => <div className="row" key={event.id}><time>{event.time}</time><div><strong>{event.title}</strong><small>{event.endTime}</small></div></div>) : <p className="muted">Событий нет</p>}</article>
             </section>
           </>
+        ) : active === "tasks" ? (
+          <TasksView workspace={workspace} today={summary.today} saving={saving} onChange={persist} onToggle={complete} />
         ) : (
           <section className="hero"><div><p className="eyebrow">МИГРАЦИЯ ИНТЕРФЕЙСА</p><h1>{navigation.find(([key]) => key === active)?.[1]}</h1><p>Этот модуль будет перенесён следующим без изменения данных.</p></div></section>
         )}
