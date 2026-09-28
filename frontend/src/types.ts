@@ -80,6 +80,10 @@ export interface Goal extends Project {
   milestones?: Array<{ title: string; done: boolean }>;
 }
 
+export interface Account extends IdentifiedRecord { opening: number; currency: string; createdAt?: string; updatedAt?: string }
+export interface Transaction { id: string; kind: "income" | "expense" | "transfer"; amount: number; date: string; category?: string; title?: string; accountId: string; toAccountId?: string; createdAt?: string; updatedAt?: string }
+export interface Budget extends IdentifiedRecord { category: string; amount: number; monthKey: string; currency: string; createdAt?: string; updatedAt?: string }
+
 export interface WorkspaceSettings {
   name: string;
   language: Language;
@@ -99,9 +103,9 @@ export interface Workspace {
   notes: Note[];
   projects: Project[];
   goals: Goal[];
-  accounts: IdentifiedRecord[];
-  transactions: Array<{ id: string; [key: string]: unknown }>;
-  budgets: IdentifiedRecord[];
+  accounts: Account[];
+  transactions: Transaction[];
+  budgets: Budget[];
   reviews: Array<{ id: string; [key: string]: unknown }>;
   islam: Record<string, unknown>;
 }
