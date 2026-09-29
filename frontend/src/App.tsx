@@ -13,23 +13,12 @@ import { ShellTools } from "./components/ShellTools";
 import { TasksView } from "./components/TasksView";
 import { eventOccurs } from "./domain/calendar";
 import { habitIsDue } from "./domain/habits";
+import { translate, type TranslationKey } from "./i18n";
 import { toggleTask } from "./domain/tasks";
 import type { Workspace } from "./types";
 import { emptyWorkspace, todayIn } from "./workspace";
 
-const navigation = [
-  ["today", "Сегодня"],
-  ["tasks", "Задачи"],
-  ["calendar", "Календарь"],
-  ["habits", "Привычки"],
-  ["islam", "Ислам"],
-  ["notes", "Заметки"],
-  ["goals", "Цели"],
-  ["projects", "Проекты"],
-  ["finance", "Финансы"],
-  ["review", "Обзор недели"],
-  ["settings", "Настройки"],
-] as const;
+const navigation = ["today", "tasks", "calendar", "habits", "islam", "notes", "goals", "projects", "finance", "review", "settings"] as const satisfies readonly TranslationKey[];
 
 export default function App() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
@@ -113,16 +102,17 @@ export default function App() {
   if (!workspace || !summary) {
     return <main className="center-state"><div className="spinner" /><p>Загрузка…</p></main>;
   }
+  const t = (key: TranslationKey) => translate(workspace.settings.language, key);
 
   return (
     <div className="shell">
       <aside className="sidebar glass">
         <a className="brand" href="#today"><span>n</span> n-os</a>
-        <p className="caption">РАБОЧЕЕ ПРОСТРАНСТВО</p>
+        <p className="caption">{t("workspace").toUpperCase()}</p>
         <nav>
-          {navigation.map(([key, label]) => (
+          {navigation.map((key) => (
             <button className={active === key ? "active" : ""} key={key} onClick={() => setActive(key)}>
-              {label}
+              {t(key)}
               {key === "tasks" && <small>{workspace.tasks.filter((task) => task.status !== "completed").length}</small>}
             </button>
           ))}
@@ -131,16 +121,16 @@ export default function App() {
       </aside>
 
       <main className="content">
-        <header className="topbar"><span>n-os / {navigation.find(([key]) => key === active)?.[1]}</span><div className="top-actions"><ShellTools workspace={workspace} today={summary.today} onNavigate={setActive} /><div className="sync-state">{saving ? "Сохранение…" : syncError || "Сохранено"}<button onClick={() => persist({ ...structuredClone(workspace), settings: { ...workspace.settings, language: workspace.settings.language === "ru" ? "en" : "ru" } })}>{workspace.settings.language === "ru" ? "EN" : "RU"}</button></div></div></header>
+        <header className="topbar"><span>n-os / {t(active as TranslationKey)}</span><div className="top-actions"><ShellTools workspace={workspace} today={summary.today} onNavigate={setActive} /><div className="sync-state">{saving ? t("saving") : syncError || t("saved")}<button onClick={() => persist({ ...structuredClone(workspace), settings: { ...workspace.settings, language: workspace.settings.language === "ru" ? "en" : "ru" } })}>{workspace.settings.language === "ru" ? "EN" : "RU"}</button></div></div></header>
         {syncError && <div className="error-banner" role="alert">{syncError}</div>}
         {active === "today" ? (
           <>
-            <section className="hero"><div><p className="eyebrow">ДОБРО ПОЖАЛОВАТЬ</p><h1>Сегодня в фокусе</h1><p>Все важные дела в одном месте.</p></div><time>{summary.today}</time></section>
+            <section className="hero"><div><p className="eyebrow">{t("greeting").toUpperCase()}</p><h1>{t("heading")}</h1><p>{t("todaySub")}</p></div><time>{summary.today}</time></section>
             <section className="grid">
-              <article className="card momentum"><div><p>ПРОГРЕСС ДНЯ</p><h2>{summary.completed}/{summary.tasks.length} задач</h2></div><strong>{summary.tasks.length ? Math.round(summary.completed / summary.tasks.length * 100) : 0}%</strong></article>
-              <article className="card"><h2>Задачи на сегодня</h2>{summary.tasks.length ? summary.tasks.map((task) => <div className="row" key={task.id}><button className={task.status === "completed" ? "check done" : "check"} onClick={() => complete(task.id)} aria-label={`Выполнить: ${task.title}`}>✓</button><div><strong>{task.title}</strong><small>{task.time || "Без времени"}</small></div></div>) : <p className="muted">На сегодня задач нет</p>}</article>
-              <article className="card"><h2>Расписание</h2>{summary.events.length ? summary.events.map((event) => <div className="row" key={event.id}><time>{event.time}</time><div><strong>{event.title}</strong><small>{event.endTime}</small></div></div>) : <p className="muted">Событий нет</p>}</article>
-              <article className="card"><h2>Привычки</h2>{summary.habits.length ? summary.habits.map((habit) => <div className="row" key={habit.id}><button className={habit.completions.includes(summary.today) ? "check done" : "check"} onClick={() => checkHabit(habit.id)}>✓</button><div><strong>{habit.title}</strong><small>{habit.goal || "Ежедневная цель"}</small></div></div>) : <p className="muted">На сегодня привычек нет</p>}</article>
+              <article className="card momentum"><div><p>{t("momentum").toUpperCase()}</p><h2>{summary.completed}/{summary.tasks.length} {t("tasks").toLowerCase()}</h2></div><strong>{summary.tasks.length ? Math.round(summary.completed / summary.tasks.length * 100) : 0}%</strong></article>
+              <article className="card"><h2>{t("focus")}</h2>{summary.tasks.length ? summary.tasks.map((task) => <div className="row" key={task.id}><button className={task.status === "completed" ? "check done" : "check"} onClick={() => complete(task.id)} aria-label={`${t("done")}: ${task.title}`}>✓</button><div><strong>{task.title}</strong><small>{task.time || "—"}</small></div></div>) : <p className="muted">{t("empty")}</p>}</article>
+              <article className="card"><h2>{t("schedule")}</h2>{summary.events.length ? summary.events.map((event) => <div className="row" key={event.id}><time>{event.time}</time><div><strong>{event.title}</strong><small>{event.endTime}</small></div></div>) : <p className="muted">{t("empty")}</p>}</article>
+              <article className="card"><h2>{t("habits")}</h2>{summary.habits.length ? summary.habits.map((habit) => <div className="row" key={habit.id}><button className={habit.completions.includes(summary.today) ? "check done" : "check"} onClick={() => checkHabit(habit.id)}>✓</button><div><strong>{habit.title}</strong><small>{habit.goal || t("target")}</small></div></div>) : <p className="muted">{t("empty")}</p>}</article>
             </section>
           </>
         ) : active === "tasks" ? (
@@ -162,7 +152,7 @@ export default function App() {
         ) : active === "settings" ? (
           <SettingsView workspace={workspace} saving={saving} onChange={persist} />
         ) : (
-          <section className="hero"><div><p className="eyebrow">МИГРАЦИЯ ИНТЕРФЕЙСА</p><h1>{navigation.find(([key]) => key === active)?.[1]}</h1><p>Этот модуль будет перенесён следующим без изменения данных.</p></div></section>
+          <section className="hero"><div><h1>{active}</h1></div></section>
         )}
       </main>
     </div>
