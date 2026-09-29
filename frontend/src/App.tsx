@@ -9,6 +9,7 @@ import { IslamView } from "./components/IslamView";
 import { NotesView } from "./components/NotesView";
 import { ReviewView } from "./components/ReviewView";
 import { SettingsView } from "./components/SettingsView";
+import { ShellTools } from "./components/ShellTools";
 import { TasksView } from "./components/TasksView";
 import { eventOccurs } from "./domain/calendar";
 import { habitIsDue } from "./domain/habits";
@@ -127,7 +128,7 @@ export default function App() {
       </aside>
 
       <main className="content">
-        <header className="topbar"><span>n-os / {navigation.find(([key]) => key === active)?.[1]}</span><div className="sync-state">{saving ? "Сохранение…" : syncError || "Сохранено"}<button onClick={() => persist({ ...structuredClone(workspace), settings: { ...workspace.settings, language: workspace.settings.language === "ru" ? "en" : "ru" } })}>{workspace.settings.language === "ru" ? "EN" : "RU"}</button></div></header>
+        <header className="topbar"><span>n-os / {navigation.find(([key]) => key === active)?.[1]}</span><div className="top-actions"><ShellTools workspace={workspace} today={summary.today} onNavigate={setActive} /><div className="sync-state">{saving ? "Сохранение…" : syncError || "Сохранено"}<button onClick={() => persist({ ...structuredClone(workspace), settings: { ...workspace.settings, language: workspace.settings.language === "ru" ? "en" : "ru" } })}>{workspace.settings.language === "ru" ? "EN" : "RU"}</button></div></div></header>
         {syncError && <div className="error-banner" role="alert">{syncError}</div>}
         {active === "today" ? (
           <>
