@@ -59,6 +59,14 @@ def test_workspace_revision_prevents_lost_updates() -> None:
         current = client.get("/api/v1/workspace", headers=headers)
         assert current.json()["revision"] == 1
 
+        history = client.get("/api/v1/workspace/history", headers=headers)
+        assert history.status_code == 200
+        assert history.json()[0]["revision"] == 1
+
+        snapshot = client.get("/api/v1/workspace/history/1", headers=headers)
+        assert snapshot.status_code == 200
+        assert snapshot.json()["workspace"] == body["workspace"]
+
 
 def test_workspace_rejects_unknown_schema() -> None:
     payload = workspace()

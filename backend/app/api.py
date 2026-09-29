@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .auth import current_owner
 from .database import get_session
 from .repositories import RevisionConflictError, WorkspaceRepository
-from .schemas import WorkspaceRead, WorkspaceSaved, WorkspaceWrite
+from .schemas import WorkspaceHistoryItem, WorkspaceRead, WorkspaceSaved, WorkspaceWrite
 
 router = APIRouter()
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -45,6 +45,26 @@ async def write_workspace(
     except RevisionConflictError as error:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="conflict") from error
     return WorkspaceSaved(revision=revision)
+
+
+@router.get("/workspace/history", response_model=list[WorkspaceHistoryItem])
+async def workspace_history(session: Session, owner: Owner) -> list[WorkspaceHistoryItem]:
+    rows = await WorkspaceRepository(session).history(owner)
+    return [
+        WorkspaceHistoryItem(revision=row.revision, created_at=row.created_at) for row in rows
+    ]
+
+
+@router.get("/workspace/history/{revision}", response_model=WorkspaceRead)
+async def read_workspace_revision(
+    revision: int, session: Session, owner: Owner
+) -> WorkspaceRead:
+    repository = WorkspaceRepository(session)
+    snapshot = await repository.revision(owner, revision)
+    current = await repository.get(owner)
+    if snapshot is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="revision_not_found")
+    return WorkspaceRead(workspace=snapshot.payload, revision=current.revision if current else 0)
 
 
 @router.get("/prayer-times")

@@ -67,5 +67,9 @@ integer minor units. Every workspace is owner-scoped, bounded to 1.5 MB and
 protected by revision checks. A stale save returns HTTP 409 instead of replacing
 newer data.
 
+The backend retains the latest 50 workspace revisions. Production also runs a
+daily compressed PostgreSQL backup with 14-day retention via
+`scripts/backup-postgres.sh`; the cron definition is in `deploy/n-os-backup.cron`.
+
 No license has been selected; a public repository does not itself grant an
 open-source license.

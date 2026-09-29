@@ -4,17 +4,19 @@ export const defaultIslam = () => ({
   prayerLogs:{},surahProgress:{},azkar:{},arabicLessons:{}
 });
 export const id = () => crypto.randomUUID();
+const defaultSettings={name:'',language:'ru',theme:'system',timezone:'Asia/Dushanbe',currency:'TJS',weekStart:1,reducedTransparency:false,remindersEnabled:false,morningTime:'08:00',eveningTime:'20:30'};
 export const iso = d => `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`;
 export const day = (date, delta=0) => { const d=new Date(date+'T12:00:00Z'); d.setUTCDate(d.getUTCDate()+delta); return iso(d); };
 export function todayIn(timezone='Asia/Dushanbe', now=new Date()) {
   return new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 }
 export function emptyWorkspace() {
-  return {schema:3,settings:{name:'',language:'ru',theme:'system',timezone:'Asia/Dushanbe',currency:'TJS',weekStart:1,reducedTransparency:false},...Object.fromEntries(collections.map(k=>[k,[]])),islam:defaultIslam()};
+  return {schema:3,settings:{...defaultSettings},...Object.fromEntries(collections.map(k=>[k,[]])),islam:defaultIslam()};
 }
 export function validate(w) {
   if(w?.schema===2){w.schema=3;w.islam=defaultIslam();}
   if (!w || w.schema!==3 || !w.settings || !['ru','en'].includes(w.settings.language)) throw Error('invalid');
+  w.settings={...defaultSettings,...w.settings};
   const defaults=defaultIslam();
   if(!w.islam||typeof w.islam!=='object')w.islam=defaults;
   w.islam.settings={...defaults.settings,...(w.islam.settings||{})};
@@ -42,6 +44,7 @@ export function validate(w) {
     if(r.projectId && !w.projects.some(p=>p.id===r.projectId)) throw Error('project');
     if(r.goalId && !w.goals.some(g=>g.id===r.goalId)) throw Error('goal');
   }
+  for(const p of w.projects) if(p.goalId && !w.goals.some(g=>g.id===p.goalId)) throw Error('goal');
   return w;
 }
 export function toMinor(value) {
@@ -81,7 +84,8 @@ export function completeTask(w,task,today) {
   }
 }
 export function goalProgress(w,g) {
-  const linked=w.tasks.filter(t=>t.goalId===g.id&&t.status!=='cancelled'); const steps=g.milestones||[];
+  const projectIds=new Set(w.projects.filter(p=>p.goalId===g.id).map(p=>p.id));
+  const linked=w.tasks.filter(t=>(t.goalId===g.id||projectIds.has(t.projectId))&&t.status!=='cancelled'); const steps=g.milestones||[];
   const all=linked.length+steps.length; return all?Math.round((linked.filter(t=>t.status==='completed').length+steps.filter(s=>s.done).length)/all*100):0;
 }
 export function balance(w,a) {
@@ -103,4 +107,3 @@ export function migrateLegacy(old) {
   return w;
 }
 export function endTime(time,minutes) { const [h,m]=(time||'09:00').split(':').map(Number); return `${String(Math.min(23,Math.floor((h*60+m+minutes)/60))).padStart(2,'0')}:${String((m+minutes)%60).padStart(2,'0')}`; }
-

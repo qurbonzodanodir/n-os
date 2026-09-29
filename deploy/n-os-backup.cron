@@ -1,0 +1,1 @@
+17 2 * * * root cd /opt/n-os && /bin/sh scripts/backup-postgres.sh >> /var/log/n-os-backup.log 2>&1

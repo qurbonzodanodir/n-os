@@ -1,4 +1,5 @@
 import json
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -78,6 +79,9 @@ def validate_workspace(value: dict[str, Any]) -> dict[str, Any]:
 
     project_ids = {project["id"] for project in records["projects"]}
     goal_ids = {goal["id"] for goal in records["goals"]}
+    for project in records["projects"]:
+        if project.get("goalId") and project["goalId"] not in goal_ids:
+            raise ValueError("invalid goal link")
     for name in ("tasks", "events", "habits", "notes"):
         for row in records[name]:
             if row.get("projectId") and row["projectId"] not in project_ids:
@@ -106,3 +110,8 @@ class WorkspaceRead(BaseModel):
 
 class WorkspaceSaved(BaseModel):
     revision: int
+
+
+class WorkspaceHistoryItem(BaseModel):
+    revision: int
+    created_at: datetime

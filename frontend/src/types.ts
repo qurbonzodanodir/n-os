@@ -71,6 +71,7 @@ export interface Note extends IdentifiedRecord {
 export interface Project extends IdentifiedRecord {
   description?: string;
   date?: string;
+  goalId?: string;
   color?: "blue" | "violet" | "rose" | "green";
   createdAt?: string;
   updatedAt?: string;
@@ -94,6 +95,9 @@ export interface WorkspaceSettings {
   currency: string;
   weekStart: number;
   reducedTransparency: boolean;
+  remindersEnabled?: boolean;
+  morningTime?: string;
+  eveningTime?: string;
 }
 
 export interface Workspace {
