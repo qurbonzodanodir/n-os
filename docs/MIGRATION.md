@@ -1,26 +1,16 @@
-# Migration to FastAPI and React
+# Migration record
 
-The migration is intentionally incremental. The existing application remains
-the reference implementation until every acceptance criterion has moved.
+The vanilla JavaScript/Cloudflare prototype was replaced incrementally to keep
+the application usable throughout the rewrite.
 
-## Chosen stack
+Completed sequence:
 
-- `frontend/`: React, TypeScript and Vite.
-- `backend/`: Python 3.12, FastAPI, SQLAlchemy and Alembic.
-- Production persistence: PostgreSQL.
-- Local persistence: SQLite for a zero-setup developer experience.
-- Redis and a worker are deferred until server-side reminders exist.
+1. FastAPI workspace contract, owner isolation and revision conflicts.
+2. React/Vite shell and typed API client.
+3. Tasks, Calendar, Habits, Notes, Projects/Goals and Finance.
+4. Weekly Review, Islam workspace, Settings and JSON data tools.
+5. RU/EN interface, search, reminders, PWA shell and deletion undo.
+6. PostgreSQL/Alembic, Docker/Nginx and GitHub Actions.
+7. Removal of the legacy runtime after parity tests passed.
 
-Next.js is not needed for this private workspace: there are no public pages that
-benefit from SEO or server rendering, and FastAPI already owns the server API.
-
-## Safe migration order
-
-1. Run FastAPI with the current versioned workspace contract.
-2. Add the Vite/React shell, typed API client, routing and shared design tokens.
-3. Move Today and Tasks, then Calendar/Habits, Notes/Projects/Goals, Finance,
-   Review, Islam and Settings. Keep parity tests for each moved module.
-4. Normalize the JSON document into owner-scoped PostgreSQL tables and import
-   existing exports transactionally while preserving IDs and money minor units.
-5. Switch production traffic only after end-to-end tests cover authentication,
-   revision conflicts, import/export and the product acceptance criteria.
+The Git history preserves every migration stage and the removed prototype.

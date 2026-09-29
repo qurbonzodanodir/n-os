@@ -1,6 +1,6 @@
-# n-os specification update 2.0
+# n-os specification 3.0
 
-This update supplements the original product and architecture specifications. The immediate release is a private, server-backed web prototype with public source code. The long-term target remains a modular production application. Original uploaded Word documents remain unchanged.
+This release is a private, server-backed web application with public source code. The React frontend and FastAPI/PostgreSQL backend are deployed independently.
 
 ## Acceptance criteria
 
@@ -26,6 +26,11 @@ This update supplements the original product and architecture specifications. Th
 - Define financial corrections, transfers, currency conversion and rounding independently of visual charts. Automatic exchange rates and recurring financial entries remain future work.
 - Preserve reference documents and user records outside the public repository. A public source repository does not authorize public workspace access.
 
-## Remaining production milestones
+## Future milestones
 
-Next.js/TypeScript frontend migration; FastAPI/PostgreSQL API; registration and account recovery; structured relational schema and Alembic migrations; Redis/Celery reminders; integration tests for auth and background workers; operational backups and monitoring; PWA/offline conflict resolution; third-party calendar integrations; AI permissions and audit logs.
+Registration and account recovery remain owned by the authentication edge.
+Server-delivered reminders will require Redis/Celery, retry and deduplication.
+High-volume use will require normalized resource tables and pagination behind the
+existing repository boundary. Operational backups, monitoring, full offline
+conflict resolution, third-party calendars and AI permissions/audit logs remain
+future work; none is represented as implemented in the interface.
