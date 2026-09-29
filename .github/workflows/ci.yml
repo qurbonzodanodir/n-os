@@ -27,6 +27,20 @@ jobs:
 
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: n_os_test
+          POSTGRES_USER: n_os
+          POSTGRES_PASSWORD: test-only-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U n_os -d n_os_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
     defaults:
       run:
         working-directory: backend
@@ -39,3 +53,14 @@ jobs:
       - run: pip install -e '.[dev]'
       - run: ruff check app migrations tests
       - run: pytest -q
+      - run: alembic upgrade head
+        env:
+          N_OS_ENVIRONMENT: test
+          N_OS_DATABASE_URL: postgresql+asyncpg://n_os:test-only-password@localhost:5432/n_os_test
+
+  containers:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: docker build --tag n-os-backend:test ./backend
+      - run: docker build --tag n-os-frontend:test ./frontend
