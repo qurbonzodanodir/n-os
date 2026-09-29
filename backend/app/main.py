@@ -35,8 +35,13 @@ app = FastAPI(title="n-os API", version="1.0.0", lifespan=lifespan)
 async def limit_write_size(request: Request, call_next):
     if request.method in {"POST", "PUT", "PATCH"}:
         length = request.headers.get("content-length")
-        if length and int(length) > 1_500_000:
-            return JSONResponse({"detail": "payload_too_large"}, status_code=413)
+        if length:
+            try:
+                too_large = int(length) > 1_500_000
+            except ValueError:
+                return JSONResponse({"detail": "invalid_content_length"}, status_code=400)
+            if too_large:
+                return JSONResponse({"detail": "payload_too_large"}, status_code=413)
     return await call_next(request)
 
 

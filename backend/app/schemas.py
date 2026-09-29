@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -17,6 +18,8 @@ COLLECTIONS = (
 
 
 def validate_workspace(value: dict[str, Any]) -> dict[str, Any]:
+    if len(json.dumps(value, ensure_ascii=False, separators=(",", ":"))) > 1_500_000:
+        raise ValueError("workspace is too large")
     if value.get("schema") != 3 or not isinstance(value.get("settings"), dict):
         raise ValueError("unsupported workspace schema")
     if value["settings"].get("language") not in {"ru", "en"}:

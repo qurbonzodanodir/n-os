@@ -95,3 +95,9 @@ def test_workspace_rejects_cross_currency_transfer() -> None:
             json={"workspace": payload, "revision": 0},
         )
     assert response.status_code == 422
+
+
+def test_workspace_rejects_oversized_owner_identity() -> None:
+    with TestClient(app) as client:
+        response = client.get("/api/v1/workspace", headers={"X-User-Id": "x" * 256})
+    assert response.status_code == 401

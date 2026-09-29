@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { workspaceApi } from "./api";
 import { CalendarView } from "./components/CalendarView";
@@ -33,19 +33,20 @@ const navigation = [
 
 export default function App() {
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
-  const [revision, setRevision] = useState(0);
   const [active, setActive] = useState("today");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [taskProject, setTaskProject] = useState("");
+  const revisionRef = useRef(0);
+  const savingRef = useRef(false);
 
   useEffect(() => {
     workspaceApi
       .read()
       .then((result) => {
         setWorkspace(result.workspace ?? emptyWorkspace());
-        setRevision(result.revision);
+        revisionRef.current = result.revision;
       })
       .catch(() => setError("Не удалось подключиться к FastAPI"));
   }, []);
@@ -59,13 +60,14 @@ export default function App() {
   }, [workspace]);
 
   async function persist(next: Workspace): Promise<boolean> {
-    if (saving) return false;
+    if (savingRef.current) return false;
+    savingRef.current = true;
     setSaving(true);
     setSyncError("");
     try {
-      const result = await workspaceApi.save(next, revision);
+      const result = await workspaceApi.save(next, revisionRef.current);
       setWorkspace(next);
-      setRevision(result.revision);
+      revisionRef.current = result.revision;
       return true;
     } catch (reason) {
       setSyncError((reason as { status?: number }).status === 409
@@ -73,6 +75,7 @@ export default function App() {
         : "Не удалось сохранить изменения.");
       return false;
     } finally {
+      savingRef.current = false;
       setSaving(false);
     }
   }

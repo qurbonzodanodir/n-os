@@ -11,6 +11,6 @@ async def current_owner(
 ) -> str:
     settings = get_settings()
     owner = authenticated_owner or (development_owner if settings.is_development else None)
-    if not owner:
+    if not owner or len(owner) > 255:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="unauthorized")
     return owner
