@@ -27,6 +27,7 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [syncError, setSyncError] = useState("");
   const [taskProject, setTaskProject] = useState("");
+  const [undoWorkspace, setUndoWorkspace] = useState<Workspace | null>(null);
   const revisionRef = useRef(0);
   const savingRef = useRef(false);
 
@@ -42,10 +43,16 @@ export default function App() {
 
   useEffect(() => {
     if (!workspace) return;
-    const dark = workspace.settings.theme === "dark" || (workspace.settings.theme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const applyTheme = () => {
+      const dark = workspace.settings.theme === "dark" || (workspace.settings.theme === "system" && media.matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    };
+    applyTheme();
     document.documentElement.dataset.reduced = String(workspace.settings.reducedTransparency);
     document.documentElement.lang = workspace.settings.language;
+    media.addEventListener("change", applyTheme);
+    return () => media.removeEventListener("change", applyTheme);
   }, [workspace]);
 
   async function persist(next: Workspace): Promise<boolean> {
@@ -54,9 +61,14 @@ export default function App() {
     setSaving(true);
     setSyncError("");
     try {
+      const previous = workspace;
       const result = await workspaceApi.save(next, revisionRef.current);
       setWorkspace(next);
       revisionRef.current = result.revision;
+      if (previous) {
+        const count = (value: Workspace) => value.tasks.length + value.events.length + value.habits.length + value.notes.length + value.projects.length + value.goals.length + value.accounts.length + value.transactions.length + value.budgets.length;
+        if (count(next) < count(previous)) setUndoWorkspace(previous);
+      }
       return true;
     } catch (reason) {
       setSyncError((reason as { status?: number }).status === 409
@@ -67,6 +79,13 @@ export default function App() {
       savingRef.current = false;
       setSaving(false);
     }
+  }
+
+  async function undoDelete() {
+    if (!undoWorkspace) return;
+    const snapshot = undoWorkspace;
+    setUndoWorkspace(null);
+    await persist(snapshot);
   }
 
   function complete(taskId: string) {
@@ -123,6 +142,7 @@ export default function App() {
       <main className="content">
         <header className="topbar"><span>n-os / {t(active as TranslationKey)}</span><div className="top-actions"><ShellTools workspace={workspace} today={summary.today} onNavigate={setActive} /><div className="sync-state">{saving ? t("saving") : syncError || t("saved")}<button onClick={() => persist({ ...structuredClone(workspace), settings: { ...workspace.settings, language: workspace.settings.language === "ru" ? "en" : "ru" } })}>{workspace.settings.language === "ru" ? "EN" : "RU"}</button></div></div></header>
         {syncError && <div className="error-banner" role="alert">{syncError}</div>}
+        {undoWorkspace && <div className="undo-toast" role="status">{t("deleted")}<button onClick={undoDelete}>{t("undo")}</button><button aria-label={t("close")} onClick={() => setUndoWorkspace(null)}>×</button></div>}
         {active === "today" ? (
           <>
             <section className="hero"><div><p className="eyebrow">{t("greeting").toUpperCase()}</p><h1>{t("heading")}</h1><p>{t("todaySub")}</p></div><time>{summary.today}</time></section>
