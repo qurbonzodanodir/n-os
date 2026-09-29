@@ -1,5 +1,6 @@
 import { FormEvent, useMemo, useState } from "react";
 
+import { translate } from "../i18n";
 import type { Repeat, Task, TaskPriority, TaskStatus, Workspace } from "../types";
 
 type Filter = "all" | "today" | "upcoming" | "overdue" | "completed";
@@ -15,20 +16,7 @@ interface Props {
 }
 
 const statuses: TaskStatus[] = ["todo", "progress", "completed", "cancelled"];
-const statusLabels: Record<TaskStatus, string> = {
-  todo: "К выполнению",
-  progress: "В работе",
-  completed: "Выполнено",
-  cancelled: "Отменено",
-};
-
 const priorities: TaskPriority[] = ["low", "medium", "high", "urgent"];
-const priorityLabels: Record<TaskPriority, string> = {
-  low: "Низкий",
-  medium: "Средний",
-  high: "Высокий",
-  urgent: "Срочный",
-};
 
 function draft(today: string): Task {
   return {
@@ -48,6 +36,9 @@ function draft(today: string): Task {
 }
 
 export function TasksView({ workspace, today, saving, onChange, onToggle, initialProjectId = "" }: Props) {
+  const t = (key: Parameters<typeof translate>[1]) => translate(workspace.settings.language, key);
+  const statusLabel = (status: TaskStatus) => t(status === "progress" ? "progress" : status);
+  const priorityLabel = (priority: TaskPriority) => t(priority);
   const [filter, setFilter] = useState<Filter>("all");
   const [mode, setMode] = useState<Mode>("list");
   const [projectId, setProjectId] = useState(initialProjectId);
@@ -83,7 +74,7 @@ export function TasksView({ workspace, today, saving, onChange, onToggle, initia
   }
 
   async function remove(taskId: string) {
-    if (!window.confirm("Удалить задачу?")) return;
+    if (!window.confirm(`${t("delete")}: ${t("task")}?`)) return;
     const next = structuredClone(workspace);
     next.tasks = next.tasks.filter((task) => task.id !== taskId);
     next.events = next.events.map((event) => event.taskId === taskId ? { ...event, taskId: "" } : event);
@@ -93,21 +84,21 @@ export function TasksView({ workspace, today, saving, onChange, onToggle, initia
   return (
     <>
       <section className="page-heading">
-        <div><p className="eyebrow">РАБОЧЕЕ ПРОСТРАНСТВО</p><h1>Задачи</h1></div>
-        <button className="primary" onClick={() => setEditing(draft(today))}>+ Добавить</button>
+        <div><p className="eyebrow">{t("workspace").toUpperCase()}</p><h1>{t("tasks")}</h1></div>
+        <button className="primary" onClick={() => setEditing(draft(today))}>+ {t("add")}</button>
       </section>
       <div className="toolbar">
         <div className="segments">
-          <button className={mode === "list" ? "active" : ""} onClick={() => setMode("list")}>Список</button>
-          <button className={mode === "board" ? "active" : ""} onClick={() => setMode("board")}>Доска</button>
+          <button className={mode === "list" ? "active" : ""} onClick={() => setMode("list")}>{t("list")}</button>
+          <button className={mode === "board" ? "active" : ""} onClick={() => setMode("board")}>{t("board")}</button>
         </div>
         <select value={filter} onChange={(event) => setFilter(event.target.value as Filter)}>
-          <option value="all">Все задачи</option><option value="today">Сегодня</option>
-          <option value="upcoming">Предстоящие</option><option value="overdue">Просроченные</option>
-          <option value="completed">Выполненные</option>
+          <option value="all">{t("all")}</option><option value="today">{t("today")}</option>
+          <option value="upcoming">{t("upcoming")}</option><option value="overdue">{t("overdue")}</option>
+          <option value="completed">{t("completed")}</option>
         </select>
         <select value={projectId} onChange={(event) => setProjectId(event.target.value)}>
-          <option value="">Все проекты</option>
+          <option value="">{t("all")} · {t("projects")}</option>
           {workspace.projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}
         </select>
       </div>
@@ -115,17 +106,17 @@ export function TasksView({ workspace, today, saving, onChange, onToggle, initia
       {mode === "list" ? (
         <article className="card task-list">
           {tasks.length ? tasks.map((task) => (
-            <TaskRow key={task.id} task={task} today={today} onEdit={() => setEditing(structuredClone(task))} onToggle={onToggle} />
-          )) : <p className="empty-state">Задач по этому фильтру нет.</p>}
+            <TaskRow key={task.id} task={task} today={today} onEdit={() => setEditing(structuredClone(task))} onToggle={onToggle} statusLabel={statusLabel} priorityLabel={priorityLabel} />
+          )) : <p className="empty-state">{t("empty")}</p>}
         </article>
       ) : (
         <div className="task-board">
           {statuses.map((status) => (
             <section className="board-column" key={status}>
-              <header><strong>{statusLabels[status]}</strong><span>{tasks.filter((task) => task.status === status).length}</span></header>
+              <header><strong>{statusLabel(status)}</strong><span>{tasks.filter((task) => task.status === status).length}</span></header>
               {tasks.filter((task) => task.status === status).map((task) => (
                 <button className="board-task" key={task.id} onClick={() => setEditing(structuredClone(task))}>
-                  <span className={`priority ${task.priority || "medium"}`}>{priorityLabels[task.priority || "medium"]}</span>
+                  <span className={`priority ${task.priority || "medium"}`}>{priorityLabel(task.priority || "medium")}</span>
                   <strong>{task.title}</strong><small>{task.date || "Без срока"}</small>
                 </button>
               ))}
@@ -139,12 +130,12 @@ export function TasksView({ workspace, today, saving, onChange, onToggle, initia
   );
 }
 
-function TaskRow({ task, today, onEdit, onToggle }: { task: Task; today: string; onEdit: () => void; onToggle: (id: string) => void }) {
+function TaskRow({ task, today, onEdit, onToggle, statusLabel, priorityLabel }: { task: Task; today: string; onEdit: () => void; onToggle: (id: string) => void; statusLabel: (status: TaskStatus) => string; priorityLabel: (priority: TaskPriority) => string }) {
   const overdue = Boolean(task.date && task.date < today && !["completed", "cancelled"].includes(task.status));
   return <div className={`task-row ${task.status === "completed" ? "completed" : ""}`}>
     <button className={task.status === "completed" ? "check done" : "check"} onClick={() => onToggle(task.id)} aria-label={`Выполнить: ${task.title}`}>✓</button>
-    <button className="task-body" onClick={onEdit}><strong>{task.title}</strong><small className={overdue ? "overdue" : ""}>{task.date || "Без срока"} {task.time || ""} · {statusLabels[task.status]}</small></button>
-    <span className={`priority ${task.priority || "medium"}`}>{priorityLabels[task.priority || "medium"]}</span>
+    <button className="task-body" onClick={onEdit}><strong>{task.title}</strong><small className={overdue ? "overdue" : ""}>{task.date || "—"} {task.time || ""} · {statusLabel(task.status)}</small></button>
+    <span className={`priority ${task.priority || "medium"}`}>{priorityLabel(task.priority || "medium")}</span>
   </div>;
 }
 
@@ -156,6 +147,7 @@ function TaskEditor({ task, workspace, saving, onClose, onSave, onDelete }: {
   onSave: (task: Task) => void;
   onDelete?: (id: string) => void;
 }) {
+  const t = (key: Parameters<typeof translate>[1]) => translate(workspace.settings.language, key);
   const [value, setValue] = useState(task);
   const [subtasks, setSubtasks] = useState((task.subtasks || []).map((item) => `${item.done ? "[x]" : "[ ]"} ${item.title}`).join("\n"));
   const update = <K extends keyof Task>(key: K, next: Task[K]) => setValue((current) => ({ ...current, [key]: next }));
@@ -167,20 +159,20 @@ function TaskEditor({ task, workspace, saving, onClose, onSave, onDelete }: {
 
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <section className="modal" role="dialog" aria-modal="true" aria-labelledby="task-editor-title">
-      <header><h2 id="task-editor-title">{task.id ? "Редактировать задачу" : "Новая задача"}</h2><button onClick={onClose}>×</button></header>
+      <header><h2 id="task-editor-title">{task.id ? `${t("edit")} · ${t("task")}` : `${t("add")} · ${t("task")}`}</h2><button onClick={onClose}>×</button></header>
       <form onSubmit={submit}>
-        <label className="full">Название<input required autoFocus value={value.title} onChange={(event) => update("title", event.target.value)} /></label>
-        <label className="full">Описание<textarea value={value.description || ""} onChange={(event) => update("description", event.target.value)} /></label>
-        <label>Дата<input required type="date" value={value.date || ""} onChange={(event) => update("date", event.target.value)} /></label>
-        <label>Время<input type="time" value={value.time || ""} onChange={(event) => update("time", event.target.value)} /></label>
-        <label>Статус<select value={value.status} onChange={(event) => update("status", event.target.value as TaskStatus)}>{statuses.map((status) => <option value={status} key={status}>{statusLabels[status]}</option>)}</select></label>
-        <label>Приоритет<select value={value.priority || "medium"} onChange={(event) => update("priority", event.target.value as TaskPriority)}>{priorities.map((priority) => <option value={priority} key={priority}>{priorityLabels[priority]}</option>)}</select></label>
-        <label>Повтор<select value={value.repeat || "none"} onChange={(event) => update("repeat", event.target.value as Repeat)}><option value="none">Нет</option><option value="daily">Ежедневно</option><option value="weekly">Еженедельно</option><option value="monthly">Ежемесячно</option></select></label>
-        <label>Проект<select value={value.projectId || ""} onChange={(event) => update("projectId", event.target.value)}><option value="">Без проекта</option>{workspace.projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
-        <label>Цель<select value={value.goalId || ""} onChange={(event) => update("goalId", event.target.value)}><option value="">Без цели</option>{workspace.goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>
-        <label>Теги<input value={value.tags || ""} onChange={(event) => update("tags", event.target.value)} /></label>
-        <label className="full">Подзадачи<textarea placeholder="[ ] Подзадача" value={subtasks} onChange={(event) => setSubtasks(event.target.value)} /></label>
-        <footer>{onDelete && <button className="danger" type="button" onClick={() => onDelete(task.id)}>Удалить</button>}<span /><button type="button" onClick={onClose}>Отмена</button><button className="primary" disabled={saving}>Сохранить</button></footer>
+        <label className="full">{t("title")}<input required autoFocus value={value.title} onChange={(event) => update("title", event.target.value)} /></label>
+        <label className="full">{t("description")}<textarea value={value.description || ""} onChange={(event) => update("description", event.target.value)} /></label>
+        <label>{t("date")}<input required type="date" value={value.date || ""} onChange={(event) => update("date", event.target.value)} /></label>
+        <label>{t("time")}<input type="time" value={value.time || ""} onChange={(event) => update("time", event.target.value)} /></label>
+        <label>{t("status")}<select value={value.status} onChange={(event) => update("status", event.target.value as TaskStatus)}>{statuses.map((status) => <option value={status} key={status}>{t(status === "progress" ? "progress" : status)}</option>)}</select></label>
+        <label>{t("priority")}<select value={value.priority || "medium"} onChange={(event) => update("priority", event.target.value as TaskPriority)}>{priorities.map((priority) => <option value={priority} key={priority}>{t(priority)}</option>)}</select></label>
+        <label>{t("repeat")}<select value={value.repeat || "none"} onChange={(event) => update("repeat", event.target.value as Repeat)}>{(["none", "daily", "weekly", "monthly"] as const).map((repeat) => <option value={repeat} key={repeat}>{t(repeat)}</option>)}</select></label>
+        <label>{t("project")}<select value={value.projectId || ""} onChange={(event) => update("projectId", event.target.value)}><option value="">{t("none")}</option>{workspace.projects.map((project) => <option key={project.id} value={project.id}>{project.title}</option>)}</select></label>
+        <label>{t("goal")}<select value={value.goalId || ""} onChange={(event) => update("goalId", event.target.value)}><option value="">{t("none")}</option>{workspace.goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>
+        <label>{t("tags")}<input value={value.tags || ""} onChange={(event) => update("tags", event.target.value)} /></label>
+        <label className="full">{t("subtasks")}<textarea value={subtasks} onChange={(event) => setSubtasks(event.target.value)} /></label>
+        <footer>{onDelete && <button className="danger" type="button" onClick={() => onDelete(task.id)}>{t("delete")}</button>}<span /><button type="button" onClick={onClose}>{t("cancel")}</button><button className="primary" disabled={saving}>{t("save")}</button></footer>
       </form>
     </section>
   </div>;
