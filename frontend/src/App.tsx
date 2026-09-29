@@ -2,10 +2,10 @@ import { useEffect } from "react";
 
 export default function App() {
   useEffect(() => {
-    // React owns the stable mount; the restored presentation module renders
-    // the original n-os interface and is bundled by Vite.
-    // @ts-expect-error Restored framework-agnostic JavaScript module.
-    void import("./legacy/app.js");
+    // React owns application startup. Views can now move across this explicit
+    // boundary one at a time without changing the deployed routes or data API.
+    // @ts-expect-error Framework-agnostic module during the staged migration.
+    void import("./legacy/app.js").then((module) => module.mountLegacyApp());
   }, []);
 
   return (
