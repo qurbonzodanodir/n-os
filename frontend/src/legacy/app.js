@@ -17,7 +17,7 @@ import {LegacyTodayPanel} from '../components/LegacyTodayPanel.tsx';
 import {LegacyFinancePanel} from '../components/LegacyFinancePanel.tsx';
 import {LegacyIslamPanel} from '../components/LegacyIslamPanel.tsx';
 import {LegacyShellPanel} from '../components/LegacyShellPanel.tsx';
-import {LegacyInstallPrompt,LegacyToast} from '../components/LegacyUtilityPanels.tsx';
+import {LegacyBootError,LegacyInstallPrompt,LegacyToast} from '../components/LegacyUtilityPanels.tsx';
 import {LegacyDialogPanel} from '../components/LegacyDialogPanel.tsx';
 import {LegacySearchDialog} from '../components/LegacySearchDialog.tsx';
 import {LegacyPickerDialog} from '../components/LegacyPickerDialog.tsx';
@@ -379,7 +379,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(w()
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;updateInstallPrompt();if(view==='settings')render();});
 window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;sessionStorage.removeItem('n-os-install-dismissed');updateInstallPrompt();toast(t('installedApp'));});
 if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
-async function load(){try{await store.load();syncError=store.conflict?'conflict':'';selected=today();dashboardDate=selected;financeMonth=selected.slice(0,7);reviewDate=selected;render();scheduleWorkspaceNotifications();if(launchAction&&types[launchAction]){const action=launchAction;launchAction=null;history.replaceState(null,'',location.pathname+location.hash);openEditor(action);}}catch{if(store.loaded){syncError='loadError';render();}else $('#app').innerHTML=`<div class="boot"><h1>n-os</h1><p>${t('loadError')}</p>${button('retry','reload')}</div>`;}}
+async function load(){try{await store.load();syncError=store.conflict?'conflict':'';selected=today();dashboardDate=selected;financeMonth=selected.slice(0,7);reviewDate=selected;render();scheduleWorkspaceNotifications();if(launchAction&&types[launchAction]){const action=launchAction;launchAction=null;history.replaceState(null,'',location.pathname+location.hash);openEditor(action);}}catch{if(store.loaded){syncError='loadError';render();}else{reactShellRoot||=createRoot($('#app'));reactShellRoot.render(createElement(LegacyBootError,{message:t('loadError'),retryLabel:t('retry')}));}}}
 window.addEventListener('online',()=>{if(store.loaded&&store.dirty&&!store.conflict&&!store.busy)persist();else render();});
 window.addEventListener('offline',render);
 let lastToday=today();setInterval(()=>{const d=today();if(d!==lastToday){lastToday=d;if(!$('#dialog').open&&view==='today')render();}},60000);

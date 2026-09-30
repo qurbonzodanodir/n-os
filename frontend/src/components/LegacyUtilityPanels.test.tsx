@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { LegacyInstallPrompt, LegacyToast } from "./LegacyUtilityPanels";
+import { LegacyBootError, LegacyInstallPrompt, LegacyToast } from "./LegacyUtilityPanels";
 
 describe("Legacy utility panels", () => {
   it("keeps PWA install and dismiss actions", () => {
@@ -14,5 +14,11 @@ describe("Legacy utility panels", () => {
     const html = renderToStaticMarkup(<LegacyToast message="Deleted" withUndo label={(key) => key} />);
     expect(html).toContain("Deleted");
     expect(html).toContain('data-action="undo"');
+  });
+
+  it("renders a retry action when initial loading fails", () => {
+    const html = renderToStaticMarkup(<LegacyBootError message="Try again" retryLabel="Retry" />);
+    expect(html).toContain("Try again");
+    expect(html).toContain('data-action="reload"');
   });
 });
