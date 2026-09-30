@@ -4,6 +4,7 @@ import {translate} from './i18n.js';
 import {icon} from './icons.js';
 import {basmala,surahs,azkar,azkarCategories} from './islam-content.js';
 import {createRoot} from 'react-dom/client';
+import {flushSync} from 'react-dom';
 import {createElement} from 'react';
 import {LegacySettingsPanel} from '../components/LegacySettingsPanel.tsx';
 import {LegacyNotesPanel} from '../components/LegacyNotesPanel.tsx';
@@ -15,6 +16,7 @@ import {LegacyCalendarPanel} from '../components/LegacyCalendarPanel.tsx';
 import {LegacyTodayPanel} from '../components/LegacyTodayPanel.tsx';
 import {LegacyFinancePanel} from '../components/LegacyFinancePanel.tsx';
 import {LegacyIslamPanel} from '../components/LegacyIslamPanel.tsx';
+import {LegacyShellPanel} from '../components/LegacyShellPanel.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -29,6 +31,7 @@ let detailPeriod='year',detailCursor=selected,detailItem=null;
 let syncError='',toastTimer,undo=null,editing=null,focusBefore=null;
 let deferredInstallPrompt=null;
 let reactViewRoot=null;
+let reactShellRoot=null;
 let islamTab='prayer',zikrCategory='morning',prayerState={date:'',loading:false,error:false,data:null},prayerTimers=[],workspaceTimers=[];
 const w=()=>store.data;
 const t=k=>translate(w().settings.language,k);
@@ -44,14 +47,15 @@ const head=(key,actionType)=>`<header class="hero"><div><div class="eyebrow">n-o
 const segments=(values,current,action)=>`<div class="segments">${values.map(v=>button(v,action,v,current===v?'active':'')).join('')}</div>`;
 const viewMounts={today:mountTodayView,tasks:mountTasksView,calendar:mountCalendarView,habits:mountHabitsView,islam:mountIslamView,notes:mountNotesView,goals:()=>mountLinksView('goal'),projects:()=>mountLinksView('project'),finance:mountFinanceView,review:mountReviewView,settings:mountSettingsView};
 if(nav.some(key=>!viewMounts[key]))throw Error('Every primary view must have a React mount');
-function navButton(v){return `<button type="button" data-action="view" data-value="${v}" class="${view===v?'active':''}" ${view===v?'aria-current="page"':''}>${icon(v)}<span>${t(v)}</span>${v==='tasks'?`<span class="count">${w().tasks.filter(t=>!['completed','cancelled'].includes(t.status)).length}</span>`:''}</button>`;}
 function render(){
   reactViewRoot?.unmount();reactViewRoot=null;
   const settings=w().settings; document.documentElement.lang=settings.language;
   document.documentElement.dataset.theme=settings.theme==='system'?(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'):settings.theme;
   document.documentElement.dataset.reduced=settings.reducedTransparency;
   document.title=`${t(view)} · n-os`;
-  $('#app').innerHTML=`<div class="shell"><aside class="sidebar glass"><a href="#today" class="brand"><span class="logo">n</span><span>n-<em>os</em></span></a><p class="section-label">${t('workspace')}</p><nav class="nav">${nav.map(navButton).join('')}</nav><div class="sidebar-foot"><p>${icon('lock')}${t('private')}</p><div class="profile"><span class="avatar">${esc((settings.name||'n').slice(0,2).toUpperCase())}</span><div><strong>${esc(settings.name||'n-os')}</strong><br><small>${t('workspace')}</small></div></div></div></aside><main class="main"><header class="topbar"><div class="breadcrumbs">${icon(view)}<span>${t(view)}</span></div><div class="mobile-brand"><span class="logo">n</span><span>n-os</span></div><div class="actions"><button class="btn search-trigger" data-action="search">${icon('search')}<span>${t('search')}</span><kbd>⌘ K</kbd></button><button class="btn" data-action="language" aria-label="${t('language')}">${settings.language==='ru'?'EN':'RU'}</button>${iconButton('theme','theme','',settings.theme==='dark'?'moon':'sun')}${iconButton('notifications','notifications','','bell')}${button('add','quick','','btn primary','plus')}</div></header><div class="sync ${navigator.onLine?'':'offline'}">${icon(navigator.onLine?'cloud':'download')}<span>${t(navigator.onLine?(store.busy?'saving':store.dirty?'retained':'cloud'):'offline')}</span></div>${syncError?`<div class="error-banner" role="alert">${t(syncError)}<div class="actions">${button('export','export')}${button(store.conflict?'reload':'retry',store.conflict?'reload':'retry')}</div></div>`:''}<section id="content">${renderView()}</section></main></div><button class="mobile-fab" data-action="quick" aria-label="${t('add')}">${icon('plus')}</button><nav class="mobile-nav glass" aria-label="${t('workspace')}">${['today','tasks','calendar','notes'].map(v=>`<button data-action="view" data-value="${v}" class="${view===v?'active':''}">${icon(v)}${t(v)}</button>`).join('')}<button data-action="more" class="${!['today','tasks','calendar','notes'].includes(view)?'active':''}">${icon('more')}${t('more')}</button></nav>`;
+  const contentHtml=renderView();
+  reactShellRoot||=(createRoot($('#app')));
+  flushSync(()=>reactShellRoot.render(createElement(LegacyShellPanel,{view,nav,settings,taskCount:w().tasks.filter(task=>!['completed','cancelled'].includes(task.status)).length,online:navigator.onLine,syncLabel:t(navigator.onLine?(store.busy?'saving':store.dirty?'retained':'cloud'):'offline'),syncError,conflict:store.conflict,contentHtml,label:t,icon})));
   viewMounts[view]();
   updateInstallPrompt();
 }
@@ -308,7 +312,7 @@ document.addEventListener('click',async event=>{
  if(action==='detail-period'){detailPeriod=value;if(detailItem)return openDetails(detailItem.type,detailItem.id);return;}
  if(action==='detail-prev'||action==='detail-next'){const sign=action==='detail-prev'?-1:1;detailCursor=detailPeriod==='month'?`${shiftMonth(detailCursor.slice(0,7),sign)}-01`:`${Number(detailCursor.slice(0,4))+sign}-01-01`;if(detailItem)return openDetails(detailItem.type,detailItem.id);return;}
  if(action==='quick'){showDialog(t('add'),`<div class="picker">${Object.keys(types).map(type=>button(type,'add',type,'',types[type])).join('')}</div>`);return;}
- if(action==='more'){showDialog(t('workspace'),`<div class="picker">${nav.map(v=>button(v,'view',v,'',v)).join('')}${button('search','search','','','search')}</div>`);return;}
+ if(action==='more'){showDialog(t('workspace'),`<div class="picker">${nav.map(v=>button(v,'view',v,'',v)).join('')}${button('search','search','','','search')}${button('notifications','notifications','','','bell')}</div>`);return;}
  if(action==='language'){w().settings.language=w().settings.language==='ru'?'en':'ru';await persist();return;}
  if(action==='theme'){const effective=document.documentElement.dataset.theme;w().settings.theme=effective==='dark'?'light':'dark';await persist();return;}
  if(action==='dismiss-install'){sessionStorage.setItem('n-os-install-dismissed','1');updateInstallPrompt();return;}
