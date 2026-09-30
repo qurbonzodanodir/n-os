@@ -19,6 +19,7 @@ import {LegacyIslamPanel} from '../components/LegacyIslamPanel.tsx';
 import {LegacyShellPanel} from '../components/LegacyShellPanel.tsx';
 import {LegacyInstallPrompt,LegacyToast} from '../components/LegacyUtilityPanels.tsx';
 import {LegacyDialogPanel} from '../components/LegacyDialogPanel.tsx';
+import {LegacySearchDialog} from '../components/LegacySearchDialog.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -226,6 +227,7 @@ function field(name,value='',type='text',options=[],full=false,required=false,la
 function checkField(name,value,label=name){return `<label class="check-field"><input type="checkbox" name="${name}" ${value?'checked':''}>${t(label)}</label>`;}
 const linkedFields=(r)=>field('projectId',r.projectId||'','select',[['','none'],...w().projects.map(p=>[p.id,p.title])],false,false,'project')+field('goalId',r.goalId||'','select',[['','none'],...w().goals.map(g=>[g.id,g.title])],false,false,'goal');
 function showDialog(title,body,cls=''){focusBefore=document.activeElement;const d=$('#dialog');d.className=cls;reactDialogRoot||=(createRoot(d));flushSync(()=>reactDialogRoot.render(createElement(LegacyDialogPanel,{title,bodyHtml:body,closeLabel:t('close'),icon})));if(!d.open)d.showModal();setTimeout(()=>d.querySelector('input:not([type=checkbox]),textarea')?.focus(),0);}
+function showReactDialog(title,body,cls=''){focusBefore=document.activeElement;const d=$('#dialog');d.className=cls;reactDialogRoot||=(createRoot(d));flushSync(()=>reactDialogRoot.render(createElement(LegacyDialogPanel,{title,body,closeLabel:t('close'),icon})));if(!d.open)d.showModal();setTimeout(()=>d.querySelector('input:not([type=checkbox]),textarea')?.focus(),0);}
 function closeDialog(){const d=$('#dialog');d.close();d.className='';reactDialogRoot?.render(null);editing=null;detailItem=null;focusBefore?.focus?.();}
 function openEditor(type,itemId=null){
  if(['transaction','budget'].includes(type)&&!w().accounts.length){toast(t('accountNeeded'));type='account';itemId=null;}
@@ -282,7 +284,7 @@ function markdown(text){
  html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[-*] (.+)$/gm,'<div>• $1</div>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\n/g,'<br>');
  return html.replace(/\u0000(\d+)\u0000/g,(_,n)=>blocks[Number(n)]);
 }
-function searchResults(query){const q=query.trim().toLowerCase();const rows=Object.entries(types).flatMap(([type,c])=>w()[c].map(r=>({type,...r}))).filter(r=>!q||`${r.title} ${r.body||''} ${r.category||''} ${r.tags||''}`.toLowerCase().includes(q)).slice(0,25);return rows.map(r=>`<button class="search-result" data-action="detail" data-type="${r.type}" data-id="${r.id}">${icon(types[r.type])}<span><strong>${esc(r.title||r.category||t(r.kind))}</strong></span><small>${t(r.type)}</small></button>`).join('')||`<div class="empty">${t('noResults')}</div>`;}
+function searchRows(){return Object.entries(types).flatMap(([type,collection])=>w()[collection].map(row=>({id:row.id,type,title:row.title||row.category||t(row.kind),searchable:`${row.title||''} ${row.body||''} ${row.category||''} ${row.tags||''}`.toLowerCase(),iconName:types[type]})));}
 async function openWorkspaceHistory(){showDialog(t('versionHistory'),`<p class="form-note">${t('loading')}</p>`);try{const response=await fetch('/api/v1/workspace/history',{cache:'no-store',headers:developmentHeaders});if(!response.ok)throw Error();const rows=await response.json();showDialog(t('versionHistory'),`<p class="form-note">${t('historyHint')}</p><div class="related-list">${rows.map(row=>`<button class="related-item" data-action="revision-preview" data-value="${row.revision}">${icon('history')}<span><strong>${t('version')} ${row.revision}</strong><small>${dateTimeLabel(row.created_at)}</small></span>${icon('arrow')}</button>`).join('')||`<p class="meta">${t('noData')}</p>`}</div>`);}catch{closeDialog();toast(t('loadError'));}}
 async function previewRevision(revision){try{const response=await fetch(`/api/v1/workspace/history/${revision}`,{cache:'no-store',headers:developmentHeaders});if(!response.ok)throw Error();const snapshot=await response.json(),data=validate(snapshot.workspace),count=collections.reduce((sum,key)=>sum+data[key].length,0);pendingRevision={workspace:data,revision:snapshot.revision};showDialog(`${t('version')} ${revision}`,`<div class="detail-stats">${statBox(t('records'),count)}${statBox(t('tasks'),data.tasks.length)}${statBox(t('notes'),data.notes.length)}${statBox(t('habits'),data.habits.length)}</div><p class="form-note">${t('restoreHint')}</p><div class="form-footer">${button('cancel','workspace-history')}${button('restore','restore-revision','','btn primary')}</div>`);}catch{toast(t('loadError'));}}
 let pendingRevision=null;
@@ -367,7 +369,7 @@ document.addEventListener('click',async event=>{
  if(action==='confirm-import'&&pendingImport){store.data=pendingImport;pendingImport=null;if(await persist())closeDialog();return;}
  if(action==='retry')return persist();
  if(action==='reload')return load();
- if(action==='search'){showDialog(t('search'),`<input class="search-input" id="global-search" aria-label="${t('search')}" placeholder="${t('search')}"><div id="search-results">${searchResults('')}</div>`);return;}
+ if(action==='search'){showReactDialog(t('search'),createElement(LegacySearchDialog,{rows:searchRows(),label:t,icon}));return;}
  if(action==='notifications'){const date=today();const rows=w().tasks.filter(x=>x.date<=date&&!['completed','cancelled'].includes(x.status)).map(taskRow).join('')+w().events.filter(e=>Number(e.reminder)>0&&occurs(e,date)).map(eventRow).join('');showDialog(t('notifications'),`<p class="form-note">${t('reminderNote')}</p>${rows||`<p>${t('noReminders')}</p>`}`);return;}
  if(action==='note-preview'){let preview=$('#note-preview');if(!preview){$('#item-form').insertAdjacentHTML('beforeend','<div id="note-preview" class="md"></div>');preview=$('#note-preview');}preview.innerHTML=markdown($('#item-form textarea[name=body]').value);preview.scrollIntoView({block:'nearest'});return;}
  if(action==='save-settings'){const form=$('#settings-form');if(!form.reportValidity())return;const values=new FormData(form);Object.assign(w().settings,Object.fromEntries(values),{weekStart:Number(values.get('weekStart')),reducedTransparency:values.has('reducedTransparency'),remindersEnabled:values.has('remindersEnabled')});await persist();return;}
@@ -375,7 +377,6 @@ document.addEventListener('click',async event=>{
 });
 document.addEventListener('submit',e=>{e.preventDefault();if(e.target.id==='item-form')submitItem(e.target);});
 document.addEventListener('change',async e=>{if(e.target.id==='task-filter'){taskFilter=e.target.value;render();}if(e.target.id==='project-filter'){projectFilter=e.target.value;render();}if(e.target.id==='finance-month'){financeMonth=e.target.value||today().slice(0,7);render();}if(e.target.id==='note-query'){noteQuery=e.target.value;render();}if(e.target.id==='prayer-reminder'){w().islam.settings.reminderMinutes=Number(e.target.value);await persist();schedulePrayerNotifications();}});
-document.addEventListener('input',e=>{if(e.target.id==='global-search')$('#search-results').innerHTML=searchResults(e.target.value);});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.querySelector('[data-action=search]')?.click();}});
 window.addEventListener('hashchange',()=>{if(nav.includes(location.hash.slice(1))){view=location.hash.slice(1);render();}});
 window.addEventListener('beforeunload',e=>{if(store.dirty||store.busy){e.preventDefault();e.returnValue='';}});
