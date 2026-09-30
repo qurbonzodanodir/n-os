@@ -18,6 +18,7 @@ import {LegacyFinancePanel} from '../components/LegacyFinancePanel.tsx';
 import {LegacyIslamPanel} from '../components/LegacyIslamPanel.tsx';
 import {LegacyShellPanel} from '../components/LegacyShellPanel.tsx';
 import {LegacyInstallPrompt,LegacyToast} from '../components/LegacyUtilityPanels.tsx';
+import {LegacyDialogPanel} from '../components/LegacyDialogPanel.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -33,7 +34,7 @@ let syncError='',toastTimer,undo=null,editing=null,focusBefore=null;
 let deferredInstallPrompt=null;
 let reactViewRoot=null;
 let reactShellRoot=null;
-let reactInstallRoot=null,reactToastRoot=null;
+let reactInstallRoot=null,reactToastRoot=null,reactDialogRoot=null;
 let islamTab='prayer',zikrCategory='morning',prayerState={date:'',loading:false,error:false,data:null},prayerTimers=[],workspaceTimers=[];
 const w=()=>store.data;
 const t=k=>translate(w().settings.language,k);
@@ -224,8 +225,8 @@ function field(name,value='',type='text',options=[],full=false,required=false,la
 }
 function checkField(name,value,label=name){return `<label class="check-field"><input type="checkbox" name="${name}" ${value?'checked':''}>${t(label)}</label>`;}
 const linkedFields=(r)=>field('projectId',r.projectId||'','select',[['','none'],...w().projects.map(p=>[p.id,p.title])],false,false,'project')+field('goalId',r.goalId||'','select',[['','none'],...w().goals.map(g=>[g.id,g.title])],false,false,'goal');
-function showDialog(title,body,cls=''){focusBefore=document.activeElement;const d=$('#dialog');d.className=cls;d.innerHTML=`<header class="dialog-head"><h2 id="dialog-title">${title}</h2>${iconButton('close','close','','close')}</header><div class="dialog-body">${body}</div>`;if(!d.open)d.showModal();setTimeout(()=>d.querySelector('input:not([type=checkbox]),textarea')?.focus(),0);}
-function closeDialog(){const d=$('#dialog');d.close();d.className='';editing=null;detailItem=null;focusBefore?.focus?.();}
+function showDialog(title,body,cls=''){focusBefore=document.activeElement;const d=$('#dialog');d.className=cls;reactDialogRoot||=(createRoot(d));flushSync(()=>reactDialogRoot.render(createElement(LegacyDialogPanel,{title,bodyHtml:body,closeLabel:t('close'),icon})));if(!d.open)d.showModal();setTimeout(()=>d.querySelector('input:not([type=checkbox]),textarea')?.focus(),0);}
+function closeDialog(){const d=$('#dialog');d.close();d.className='';reactDialogRoot?.render(null);editing=null;detailItem=null;focusBefore?.focus?.();}
 function openEditor(type,itemId=null){
  if(['transaction','budget'].includes(type)&&!w().accounts.length){toast(t('accountNeeded'));type='account';itemId=null;}
  const item=itemId?w()[types[type]].find(r=>r.id===itemId):null;if(itemId&&!item)return;
