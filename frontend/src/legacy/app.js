@@ -23,6 +23,7 @@ import {LegacySearchDialog} from '../components/LegacySearchDialog.tsx';
 import {LegacyPickerDialog} from '../components/LegacyPickerDialog.tsx';
 import {LegacyNotificationsDialog} from '../components/LegacyNotificationsDialog.tsx';
 import {LegacyWorkspaceHistoryDialog,LegacyWorkspaceRevisionDialog} from '../components/LegacyWorkspaceHistoryDialog.tsx';
+import {LegacyActionDialog} from '../components/LegacyActionDialog.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -278,7 +279,7 @@ function toast(message,withUndo=false){clearTimeout(toastTimer);const root=$('#t
 function go(v){if(!nav.includes(v))return;view=v;history.pushState(null,'','#'+v);if($('#dialog').open)closeDialog();render();window.scrollTo(0,0);}
 function exportData(){const blob=new Blob([JSON.stringify(w(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`n-os-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function hasLegacy(){try{return !!localStorage.getItem('nodir-os-v1');}catch{return false;}}
-async function importData(file){try{if(file.size>1500000)throw Error();const data=validate(JSON.parse(await file.text()));showDialog(t('import'),`<p>${t('importAsk')}</p><div class="form-footer">${button('export','export')}${button('cancel','close')}${button('import','confirm-import','','btn primary')}</div>`);pendingImport=data;}catch{toast(t('fileError'));}}
+async function importData(file){try{if(file.size>1500000)throw Error();const data=validate(JSON.parse(await file.text()));showReactDialog(t('import'),createElement(LegacyActionDialog,{message:t('importAsk'),actions:[{key:'export',label:t('export'),action:'export'},{key:'cancel',label:t('cancel'),action:'close'},{key:'import',label:t('import'),action:'confirm-import',primary:true}]}));pendingImport=data;}catch{toast(t('fileError'));}}
 let pendingImport=null;
 function markdown(text){
  const safe=esc(text||'');const blocks=[];let html=safe.replace(/```[^\n]*\n([\s\S]*?)```/g,(_,code)=>{blocks.push('<pre><code>'+code+'</code></pre>');return `\u0000${blocks.length-1}\u0000`;});
@@ -366,7 +367,7 @@ document.addEventListener('click',async event=>{
  if(action==='undo'&&undo){store.data=undo;undo=null;await persist();toast(t('saved'));return;}
  if(action==='export')return exportData();
  if(action==='import'){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=()=>input.files[0]&&importData(input.files[0]);input.click();return;}
- if(action==='migrate'){try{pendingImport=migrateLegacy(JSON.parse(localStorage.getItem('nodir-os-v1')));showDialog(t('migrate'),`<p>${t('migration')}</p><p class="form-note">${t('importAsk')}</p><div class="form-footer">${button('export','export')}${button('cancel','close')}${button('import','confirm-import','','btn primary')}</div>`);}catch{toast(t('fileError'));}return;}
+ if(action==='migrate'){try{pendingImport=migrateLegacy(JSON.parse(localStorage.getItem('nodir-os-v1')));showReactDialog(t('migrate'),createElement(LegacyActionDialog,{message:t('migration'),note:t('importAsk'),actions:[{key:'export',label:t('export'),action:'export'},{key:'cancel',label:t('cancel'),action:'close'},{key:'import',label:t('import'),action:'confirm-import',primary:true}]}));}catch{toast(t('fileError'));}return;}
  if(action==='confirm-import'&&pendingImport){store.data=pendingImport;pendingImport=null;if(await persist())closeDialog();return;}
  if(action==='retry')return persist();
  if(action==='reload')return load();
