@@ -10,6 +10,7 @@ import {LegacyNotesPanel} from '../components/LegacyNotesPanel.tsx';
 import {LegacyLinksPanel} from '../components/LegacyLinksPanel.tsx';
 import {LegacyReviewPanel} from '../components/LegacyReviewPanel.tsx';
 import {LegacyTasksPanel} from '../components/LegacyTasksPanel.tsx';
+import {LegacyHabitsPanel} from '../components/LegacyHabitsPanel.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -51,6 +52,7 @@ function render(){
   if(view==='goals'||view==='projects')mountLinksView(view==='goals'?'goal':'project');
   if(view==='review')mountReviewView();
   if(view==='tasks')mountTasksView();
+  if(view==='habits')mountHabitsView();
   updateInstallPrompt();
 }
 function renderView(){return ({today:renderToday,tasks:renderTasks,calendar:renderCalendar,habits:renderHabits,islam:renderIslam,notes:renderNotes,goals:()=>renderLinks('goal'),projects:()=>renderLinks('project'),finance:renderFinance,review:renderReview,settings:renderSettings})[view]();}
@@ -119,7 +121,8 @@ function genericDetail(type,r){
  return body||`<p class="meta">${t('noData')}</p>`;
 }
 function openDetails(type,itemId){const row=w()[types[type]]?.find(r=>r.id===itemId);if(!row)return;detailItem={type,id:itemId};detailCursor=type==='habit'?(detailCursor||today()):today();showDialog(esc(row.title||row.category||t(row.kind)),`${type==='habit'?habitDetail(row):genericDetail(type,row)}<div class="form-footer">${button('close','close')}${button('edit','edit-item',`${type}:${itemId}`,'btn primary')}</div>`,'detail-dialog');}
-function renderHabits(){const dates=Array.from({length:7},(_,i)=>day(today(),i-6));return head('habits','habit')+`<div class="cards">${w().habits.map(h=>{const s=streak(h,today());return `<article class="card glass habit-card"><div class="habit-top"><span class="habit-symbol">${icon('habits')}</span>${editButton('habit',h,`<strong>${esc(h.title)}</strong><small>${esc(h.goal||'')}</small>`)}</div><div class="habit-history">${dates.map(d=>`<div class="habit-date"><small>${dateLabel(d,{weekday:'short'})}</small><button class="check ${h.completions.includes(d)?'done':''}" data-action="habit-check" data-id="${h.id}" data-value="${d}" aria-label="${t('checkIn')} ${d}" ${!isDue(h,d)?'disabled':''}>${h.completions.includes(d)?icon('check'):'·'}</button></div>`).join('')}</div><div class="habit-stats"><span>${t('streak')}: ${s.current} ${t('days')}</span><span>${h.completions.length} ${t('checked').toLowerCase()}</span></div></article>`;}).join('')||empty('habit')}</div>`;}
+function renderHabits(){return head('habits','habit')+'<div id="react-habits-view"></div>';}
+function mountHabitsView(){const root=$('#react-habits-view');if(!root)return;const current=today(),dates=Array.from({length:7},(_,i)=>day(current,i-6)),habits=w().habits.map(h=>({id:h.id,title:h.title,goal:h.goal||'',currentStreak:streak(h,current).current,completedCount:h.completions.length,days:dates.map(date=>({date,label:dateLabel(date,{weekday:'short'}),due:isDue(h,date),completed:h.completions.includes(date)}))}));reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyHabitsPanel,{habits,label:t}));}
 const prayerNames={Fajr:'Фаджр',Dhuhr:'Зухр',Asr:'Аср',Maghrib:'Магриб',Isha:'Иша'};
 function prayerMoment(date,time){return new Date(`${date}T${time}:00+05:00`);}
 function nextPrayerInfo(){
