@@ -17,6 +17,7 @@ import {LegacyTodayPanel} from '../components/LegacyTodayPanel.tsx';
 import {LegacyFinancePanel} from '../components/LegacyFinancePanel.tsx';
 import {LegacyIslamPanel} from '../components/LegacyIslamPanel.tsx';
 import {LegacyShellPanel} from '../components/LegacyShellPanel.tsx';
+import {LegacyInstallPrompt,LegacyToast} from '../components/LegacyUtilityPanels.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -32,6 +33,7 @@ let syncError='',toastTimer,undo=null,editing=null,focusBefore=null;
 let deferredInstallPrompt=null;
 let reactViewRoot=null;
 let reactShellRoot=null;
+let reactInstallRoot=null,reactToastRoot=null;
 let islamTab='prayer',zikrCategory='morning',prayerState={date:'',loading:false,error:false,data:null},prayerTimers=[],workspaceTimers=[];
 const w=()=>store.data;
 const t=k=>translate(w().settings.language,k);
@@ -206,12 +208,12 @@ function mountSettingsView(){const root=$('#react-settings-view');if(!root)retur
 const isStandalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const isIOS=()=>/iphone|ipad|ipod/i.test(navigator.userAgent);
 function installMessage(){return t(isStandalone()?'installedApp':isIOS()?'installIOS':deferredInstallPrompt?'installText':'installUnavailable');}
-function installButton(){return !isStandalone()&&deferredInstallPrompt?button('installApp','install-app','','btn primary','download'):'';}
 function updateInstallPrompt(){
  const prompt=$('#install-prompt');if(!prompt)return;
  const dismissed=sessionStorage.getItem('n-os-install-dismissed')==='1';
  if(isStandalone()||dismissed||(!deferredInstallPrompt&&!isIOS())){prompt.hidden=true;return;}
- prompt.innerHTML=`<div class="install-mark">n</div><div><strong>${t('installApp')}</strong><p>${t(isIOS()?'installIOS':'installText')}</p></div><div class="install-actions">${deferredInstallPrompt?button('installApp','install-app','','btn primary','download'):''}${button('later','dismiss-install','','text-btn')}</div>`;
+ reactInstallRoot||=(createRoot(prompt));
+ flushSync(()=>reactInstallRoot.render(createElement(LegacyInstallPrompt,{message:t(isIOS()?'installIOS':'installText'),canInstall:!!deferredInstallPrompt,label:t,icon})));
  prompt.hidden=false;
 }
 
@@ -268,7 +270,7 @@ async function persist(){
  try{syncError='';await store.save();render();scheduleWorkspaceNotifications();return true;}
  catch(e){syncError=e.message==='conflict'?'conflict':'saveError';render();const error=$('.form-error');if(error)error.textContent=t(syncError);return false;}
 }
-function toast(message,withUndo=false){clearTimeout(toastTimer);$('#toast').innerHTML=esc(message)+(withUndo?button('undo','undo','','text-btn'):'');$('#toast').classList.add('show');toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),withUndo?12000:4000);}
+function toast(message,withUndo=false){clearTimeout(toastTimer);const root=$('#toast');reactToastRoot||=(createRoot(root));flushSync(()=>reactToastRoot.render(createElement(LegacyToast,{message,withUndo,label:t})));root.classList.add('show');toastTimer=setTimeout(()=>root.classList.remove('show'),withUndo?12000:4000);}
 function go(v){if(!nav.includes(v))return;view=v;history.pushState(null,'','#'+v);if($('#dialog').open)closeDialog();render();window.scrollTo(0,0);}
 function exportData(){const blob=new Blob([JSON.stringify(w(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`n-os-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function hasLegacy(){try{return !!localStorage.getItem('nodir-os-v1');}catch{return false;}}
