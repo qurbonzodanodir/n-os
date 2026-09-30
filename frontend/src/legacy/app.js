@@ -14,6 +14,7 @@ import {LegacyHabitsPanel} from '../components/LegacyHabitsPanel.tsx';
 import {LegacyCalendarPanel} from '../components/LegacyCalendarPanel.tsx';
 import {LegacyTodayPanel} from '../components/LegacyTodayPanel.tsx';
 import {LegacyFinancePanel} from '../components/LegacyFinancePanel.tsx';
+import {LegacyIslamPanel} from '../components/LegacyIslamPanel.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -59,6 +60,7 @@ function render(){
   if(view==='calendar')mountCalendarView();
   if(view==='today')mountTodayView();
   if(view==='finance')mountFinanceView();
+  if(view==='islam')mountIslamView();
   updateInstallPrompt();
 }
 function renderView(){return ({today:renderToday,tasks:renderTasks,calendar:renderCalendar,habits:renderHabits,islam:renderIslam,notes:renderNotes,goals:()=>renderLinks('goal'),projects:()=>renderLinks('project'),finance:renderFinance,review:renderReview,settings:renderSettings})[view]();}
@@ -160,9 +162,17 @@ function scheduleWorkspaceNotifications(){
 function renderIslam(){
  if(prayerState.date!==today()&&!prayerState.loading)setTimeout(loadPrayerTimes,0);
  const learned=Object.values(w().islam.surahProgress).filter(Boolean).length;
- const top=`<header class="hero islam-heading"><div><div class="eyebrow">n-os / ${t('workspace')}</div><h1>${t('islam')}</h1><p>${t('islamSub')}</p></div><div class="islam-progress"><strong>${learned}/${surahs.length}</strong><small>${t('surahs')} · ${t('learned').toLowerCase()}</small></div></header><div class="islam-tabs">${segments(['prayer','surahs','azkar'],islamTab,'islam-tab')}</div>`;
- return top+(islamTab==='prayer'?renderPrayerTab():islamTab==='surahs'?renderSurahsTab():renderAzkarTab());
+ islamViewModel={tab:islamTab,learned,surahCount:surahs.length};
+ if(islamTab==='prayer')islamViewModel.prayer=prayerViewModel();
+ if(islamTab==='surahs')islamViewModel.surahs={basmala,note:t('phoneticNote'),items:[...surahs].sort((a,b)=>a.number-b.number).map(s=>({id:s.id,number:s.number,name:s.name,arabicName:s.arabicName,verses:s.verses.length,learned:!!w().islam.surahProgress[s.id]}))};
+ if(islamTab==='azkar')islamViewModel.azkar=azkarViewModel();
+ return '<div id="react-islam-view"></div>';
 }
+let islamViewModel=null;
+function historyViewModel(title,valueForDay,max){const days=Array.from({length:30},(_,i)=>day(today(),i-29));return {title,subtitle:t('last30Days'),total:days.reduce((sum,date)=>sum+valueForDay(date),0),cells:days.map(date=>{const value=valueForDay(date);return {date,title:`${dateLabel(date,{day:'numeric',month:'long'})}: ${value}/${max}`,level:max?value/max:0};})};}
+function prayerViewModel(){if(prayerState.loading)return {state:'loading'};if(prayerState.error)return {state:'error'};const data=prayerState.data;if(!data)return {state:'empty'};const next=nextPrayerInfo(),date=today(),done=w().islam.prayerLogs[date]||[];return {state:'ready',nextName:next?prayerNames[next.key]:'—',nextDescription:next?`${next.time} · ${countdown(next.at)}`:t('completed'),city:t('dushanbe'),hijri:data.hijri||date,reminderMinutes:Number(w().islam.settings.reminderMinutes),notifications:w().islam.settings.notifications,cards:Object.entries(prayerNames).map(([key,name])=>({key,name,time:data.timings[key],done:done.includes(key),iconName:key==='Fajr'?'sun':'islam'})),history:historyViewModel(t('prayerHistory'),d=>(w().islam.prayerLogs[d]||[]).length,5),note:t('notificationOpen')};}
+function azkarViewModel(){const counts=w().islam.azkar[today()]||{},items=azkar.filter(z=>z.category===zikrCategory),lang=w().settings.language;return {categories:azkarCategories.map(c=>({id:c.id,name:c[lang],active:c.id===zikrCategory})),completed:items.filter(z=>(counts[z.id]||0)>=z.target).length,total:items.length,history:historyViewModel(t('azkarHistory'),d=>items.filter(z=>((w().islam.azkar[d]||{})[z.id]||0)>=z.target).length,items.length),items:items.map(z=>{const count=counts[z.id]||0;return {id:z.id,target:z.target,count,percent:Math.min(100,count/z.target*100),complete:count>=z.target,arabic:z.arabic,tajik:z.tajik,russian:z.russian};})};}
+function mountIslamView(){const root=$('#react-islam-view');if(!root||!islamViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyIslamPanel,{...islamViewModel,label:t,icon}));}
 function islamHistory(title,valueForDay,max){const days=Array.from({length:30},(_,i)=>day(today(),i-29)),total=days.reduce((s,d)=>s+valueForDay(d),0);return `<section class="card glass islam-history"><div class="section-title"><div><h3>${title}</h3><small>${t('last30Days')}</small></div><strong>${total}</strong></div><div class="islam-history-cells">${days.map(d=>{const n=valueForDay(d);return `<span style="--level:${max?n/max:0}" title="${dateLabel(d,{day:'numeric',month:'long'})}: ${n}/${max}"></span>`;}).join('')}</div></section>`;}
 function renderPrayerTab(){
  if(prayerState.loading)return `<article class="card glass islam-loading">${icon('islam')}<p>${t('loading')}</p></article>`;
