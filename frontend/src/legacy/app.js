@@ -8,6 +8,7 @@ import {createElement} from 'react';
 import {LegacySettingsPanel} from '../components/LegacySettingsPanel.tsx';
 import {LegacyNotesPanel} from '../components/LegacyNotesPanel.tsx';
 import {LegacyLinksPanel} from '../components/LegacyLinksPanel.tsx';
+import {LegacyReviewPanel} from '../components/LegacyReviewPanel.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -47,6 +48,7 @@ function render(){
   if(view==='settings')mountSettingsView();
   if(view==='notes')mountNotesView();
   if(view==='goals'||view==='projects')mountLinksView(view==='goals'?'goal':'project');
+  if(view==='review')mountReviewView();
   updateInstallPrompt();
 }
 function renderView(){return ({today:renderToday,tasks:renderTasks,calendar:renderCalendar,habits:renderHabits,islam:renderIslam,notes:renderNotes,goals:()=>renderLinks('goal'),projects:()=>renderLinks('project'),finance:renderFinance,review:renderReview,settings:renderSettings})[view]();}
@@ -185,7 +187,9 @@ function reviewBuckets(start,end,period){
  if(period==='month'){const result=[];for(let d=start;d<=end;d=day(d,7)){const e=day(d,6)>end?end:day(d,6);result.push({start:d,end:e,label:`${Number(d.slice(8))}–${Number(e.slice(8))}`});}return result;}
  return monthsBetween(start,end).map(m=>({start:`${m}-01`,end:monthEnd(m),label:dateLabel(`${m}-01`,{month:'short'})}));
 }
-function renderReview(){const {start,end}=periodBounds(reviewDate,reviewPeriod),dates=rangeDays(start,end).filter(d=>d<=today()),buckets=reviewBuckets(start,end,reviewPeriod),counts=buckets.map(b=>w().tasks.filter(x=>x.completedAt>=b.start&&x.completedAt<=b.end&&x.status==='completed').length),max=Math.max(1,...counts);let checked=0,due=0;for(const h of w().habits)for(const d of dates)if(isDue(h,d)){due++;if(h.completions.includes(d))checked++;}const reflection=w().reviews.find(r=>r.week===start)||{};return head('review')+`<div class="toolbar">${segments(['week','month','quarter','year'],reviewPeriod,'review-period')}${button('back','review-prev')}${button('next','review-next')}<span class="meta">${dateLabel(start)} — ${dateLabel(end)}</span><span class="spacer"></span><span class="tag">${t('actualData')}</span></div><div class="stat-grid"><article class="card glass stat"><small>${t('completed')}</small><strong>${counts.reduce((a,b)=>a+b,0)}</strong></article><article class="card glass stat"><small>${t('consistency')}</small><strong>${due?Math.round(checked/due*100):0}%</strong></article><article class="card glass stat"><small>${t('notes')}</small><strong>${w().notes.filter(n=>n.createdAt>=start&&n.createdAt<=end).length}</strong></article></div><div class="settings-grid"><article class="card glass pad"><h2>${t('periodProgress')}</h2><div class="review-chart">${counts.map((n,i)=>`<div class="chart-column"><small>${n}</small><i style="height:${n/max*125}px"></i><small>${buckets[i].label}</small></div>`).join('')}</div></article><article class="card glass pad"><h2>${t('reflection')}</h2><form id="reflection-form" data-week="${start}">${['wins','improve','nextFocus'].map(k=>`<div class="field"><label for="${k}">${t(k)}</label><textarea name="${k}" id="${k}">${esc(reflection[k]||'')}</textarea></div>`).join('')}<div class="form-footer">${button('save','save-reflection','','btn primary')}</div></form></article></div>`;}
+function reviewModel(){const {start,end}=periodBounds(reviewDate,reviewPeriod),dates=rangeDays(start,end).filter(d=>d<=today()),periods=reviewBuckets(start,end,reviewPeriod),counts=periods.map(b=>w().tasks.filter(x=>x.completedAt>=b.start&&x.completedAt<=b.end&&x.status==='completed').length);let checked=0,due=0;for(const h of w().habits)for(const d of dates)if(isDue(h,d)){due++;if(h.completions.includes(d))checked++;}return {start,end,completed:counts.reduce((a,b)=>a+b,0),consistency:due?Math.round(checked/due*100):0,notes:w().notes.filter(n=>n.createdAt>=start&&n.createdAt<=end).length,buckets:periods.map((bucket,index)=>({label:bucket.label,count:counts[index]})),reflection:w().reviews.find(r=>r.week===start)||{}};}
+function renderReview(){return head('review')+'<div id="react-review-view"></div>';}
+function mountReviewView(){const root=$('#react-review-view');if(!root)return;const model=reviewModel();reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyReviewPanel,{...model,period:reviewPeriod,rangeLabel:`${dateLabel(model.start)} — ${dateLabel(model.end)}`,label:t}));}
 function renderSettings(){return head('settings')+'<div id="react-settings-view"></div>';}
 function mountSettingsView(){const root=$('#react-settings-view');if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacySettingsPanel,{settings:w().settings,label:t,installMessage:installMessage(),installAvailable:!isStandalone()&&!!deferredInstallPrompt,legacyImportAvailable:hasLegacy(),notificationsGranted:typeof Notification!=='undefined'&&Notification.permission==='granted'}));}
 
