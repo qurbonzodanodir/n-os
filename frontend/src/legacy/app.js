@@ -151,10 +151,11 @@ function nextPrayerInfo(){
 function countdown(at){const mins=Math.max(0,Math.ceil((at-new Date())/60000));return mins>=60?`${Math.floor(mins/60)} ч ${mins%60} мин`:`${mins} мин`;}
 async function loadPrayerTimes(){
  const date=today();prayerState={date,loading:true,error:false,data:null};if(view==='islam')render();
- try{const response=await fetch(`/api/v1/prayer-times?date=${date}`,{cache:'no-store',headers:developmentHeaders});if(!response.ok)throw Error('prayer');prayerState={date,loading:false,error:false,data:await response.json()};schedulePrayerNotifications();}
+ try{const response=await fetch(`/api/v1/prayer-times?${new URLSearchParams({date,...prayerLocation()})}`,{cache:'no-store',headers:developmentHeaders});if(!response.ok)throw Error('prayer');prayerState={date,loading:false,error:false,data:await response.json()};schedulePrayerNotifications();}
  catch{prayerState={date,loading:false,error:true,data:null};}
  if(view==='islam')render();
 }
+function prayerLocation(){const {city,country,method,school}=w().islam.settings;return {city:city||'Dushanbe',country:country||'Tajikistan',method:String(method??3),school:String(school??1)};}
 function schedulePrayerNotifications(){
  for(const timer of prayerTimers)clearTimeout(timer);prayerTimers=[];
  if(!w().islam.settings.notifications||typeof Notification==='undefined'||Notification.permission!=='granted'||!prayerState.data)return;

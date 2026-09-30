@@ -48,6 +48,13 @@ docker compose up --build
 The container deployment must sit behind an authentication edge that replaces
 the trusted `OAI-Authenticated-User-Id` header. Do not expose it directly.
 
+### Deploy, rollback and restore
+
+On the server, `sh scripts/deploy.sh` takes a database backup, pulls `main`,
+builds, restarts and checks `/api/v1/ready` through nginx. If the check fails it
+returns to the previous commit and images. `sh scripts/restore-check.sh`
+restores the newest backup into a throw-away database to prove it is usable.
+
 ## Verification
 
 ```sh

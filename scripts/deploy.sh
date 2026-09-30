@@ -36,9 +36,10 @@ fi
 healthy() {
   i=0
   while [ "$i" -lt 30 ]; do
-    if docker compose exec -T backend python -c \
-      "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready',timeout=3)" \
-      >/dev/null 2>&1; then
+    # Goes through the frontend nginx to the backend and the database, so a
+    # bad nginx config, proxy or migration all fail the check.
+    if docker compose exec -T frontend wget -q -T 3 -O /dev/null \
+      http://127.0.0.1/api/v1/ready >/dev/null 2>&1; then
       return 0
     fi
     i=$((i + 1))

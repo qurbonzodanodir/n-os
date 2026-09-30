@@ -2,7 +2,10 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
+from app import api
+from app.config import get_settings
 from app.main import app
+from app.ratelimit import reset_rate_limits
 
 
 def workspace() -> dict:
@@ -109,3 +112,62 @@ def test_workspace_rejects_oversized_owner_identity() -> None:
     with TestClient(app) as client:
         response = client.get("/api/v1/workspace", headers={"X-User-Id": "x" * 256})
     assert response.status_code == 401
+
+
+def test_writes_are_rate_limited_per_owner(monkeypatch) -> None:
+    reset_rate_limits()
+    monkeypatch.setattr(get_settings(), "write_rate_limit_per_minute", 2)
+    headers = {"X-User-Id": f"test-{uuid4()}"}
+    with TestClient(app) as client:
+        codes = [
+            client.put(
+                "/api/v1/workspace", headers=headers, json={"workspace": workspace(), "revision": 0}
+            ).status_code
+            for _ in range(3)
+        ]
+        other = client.put(
+            "/api/v1/workspace",
+            headers={"X-User-Id": f"test-{uuid4()}"},
+            json={"workspace": workspace(), "revision": 0},
+        )
+    assert codes == [200, 409, 429]
+    assert other.status_code == 200
+    reset_rate_limits()
+
+
+def test_prayer_times_forward_the_requested_location(monkeypatch) -> None:
+    seen: dict = {}
+
+    class FakeResponse:
+        def raise_for_status(self) -> None: ...
+
+        def json(self) -> dict:
+            return {"data": {"timings": {k: "05:00 (UTC)" for k in (
+                "Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha")}}}
+
+    class FakeClient:
+        def __init__(self, **_: object) -> None: ...
+        async def __aenter__(self) -> "FakeClient":
+            return self
+        async def __aexit__(self, *_: object) -> None: ...
+        async def get(self, _url: str, params: dict) -> FakeResponse:
+            seen.update(params)
+            return FakeResponse()
+
+    monkeypatch.setattr(api.httpx, "AsyncClient", FakeClient)
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/v1/prayer-times",
+            params={"date": "2026-09-30", "city": "Istanbul", "country": "Turkey",
+                    "method": 2, "school": 0},
+            headers={"X-User-Id": f"test-{uuid4()}"},
+        )
+        bad = client.get(
+            "/api/v1/prayer-times",
+            params={"date": "2026-09-30", "method": 99},
+            headers={"X-User-Id": f"test-{uuid4()}"},
+        )
+    assert seen == {"city": "Istanbul", "country": "Turkey", "method": 2, "school": 0}
+    assert response.json()["method"] == "ISNA" and response.json()["school"] == "Shafi'i"
+    assert response.json()["timings"]["Fajr"] == "05:00"
+    assert bad.status_code == 422
