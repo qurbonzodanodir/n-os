@@ -5,16 +5,195 @@ import { translate } from "../i18n";
 import type { Workspace } from "../types";
 
 type Tab = "prayer" | "surahs" | "azkar";
-interface Props { workspace: Workspace; today: string; onChange: (workspace: Workspace) => Promise<boolean> }
+interface Props {
+  workspace: Workspace;
+  today: string;
+  onChange: (workspace: Workspace) => Promise<boolean>;
+}
 const prayerNames: Record<string, string> = { Fajr: "Фаджр", Sunrise: "Восход", Dhuhr: "Зухр", Asr: "Аср", Maghrib: "Магриб", Isha: "Иша" };
 
 export function IslamView({ workspace, today, onChange }: Props) {
   const t = (key: Parameters<typeof translate>[1]) => translate(workspace.settings.language, key);
-  const [tab, setTab] = useState<Tab>("prayer"); const [times, setTimes] = useState<PrayerTimes | null>(null); const [error, setError] = useState(false); const [surah, setSurah] = useState<(typeof surahs)[number] | null>(null); const [category, setCategory] = useState("morning");
-  useEffect(() => { let live = true; prayerApi.read(today).then((value) => { if (live) setTimes(value); }).catch(() => { if (live) setError(true); }); return () => { live = false; }; }, [today]);
-  const update = async (mutate: (next: Workspace) => void) => { const next = structuredClone(workspace); mutate(next); await onChange(next); };
-  const togglePrayer = (name: string) => update((next) => { const logs = next.islam.prayerLogs[today] || []; next.islam.prayerLogs[today] = logs.includes(name) ? logs.filter((item) => item !== name) : [...logs, name]; });
-  const enableNotifications = async () => { if (!("Notification" in window)) return; const permission = await Notification.requestPermission(); await update((next) => { next.islam.settings.notifications = permission === "granted"; }); };
+  const [tab, setTab] = useState<Tab>("prayer");
+  const [times, setTimes] = useState<PrayerTimes | null>(null);
+  const [error, setError] = useState(false);
+  const [surah, setSurah] = useState<(typeof surahs)[number] | null>(null);
+  const [category, setCategory] = useState("morning");
+  useEffect(() => {
+    let live = true;
+    prayerApi
+      .read(today)
+      .then((value) => {
+        if (live) setTimes(value);
+      })
+      .catch(() => {
+        if (live) setError(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [today]);
+  const update = async (mutate: (next: Workspace) => void) => {
+    const next = structuredClone(workspace);
+    mutate(next);
+    await onChange(next);
+  };
+  const togglePrayer = (name: string) =>
+    update((next) => {
+      const logs = next.islam.prayerLogs[today] || [];
+      next.islam.prayerLogs[today] = logs.includes(name) ? logs.filter((item) => item !== name) : [...logs, name];
+    });
+  const enableNotifications = async () => {
+    if (!("Notification" in window)) return;
+    const permission = await Notification.requestPermission();
+    await update((next) => {
+      next.islam.settings.notifications = permission === "granted";
+    });
+  };
   const learned = Object.values(workspace.islam.surahProgress).filter(Boolean).length;
-  return <><section className="page-heading islam-heading"><div><p className="eyebrow">{t("islam").toUpperCase()}</p><h1>{t("islam")}</h1><p>{t("islamSub")}</p></div><strong>{learned}/{surahs.length}<small> {t("learned").toLowerCase()}</small></strong></section><div className="segments islam-tabs">{(["prayer", "surahs", "azkar"] as const).map((key) => <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>{t(key)}</button>)}</div>{tab === "prayer" && <section>{error ? <article className="card empty-state">{t("prayerLoadError")}</article> : !times ? <article className="card empty-state">{t("loading")}</article> : <><article className="card prayer-hero"><div><small>{t("dushanbe").toUpperCase()} · {times.hijri}</small><h2>{times.timings.Fajr} — {times.timings.Isha}</h2></div><button onClick={enableNotifications}>{workspace.islam.settings.notifications ? t("notifications") : t("enablePrayerReminders")}</button></article><div className="prayer-grid">{Object.entries(prayerNames).filter(([key]) => key !== "Sunrise").map(([key, label]) => { const checked = (workspace.islam.prayerLogs[today] || []).includes(key); return <button className={`card prayer-card ${checked ? "checked" : ""}`} key={key} onClick={() => togglePrayer(key)}><small>{label}</small><strong>{times.timings[key]}</strong><span>{checked ? `✓ ${t("completed")}` : t("checkIn")}</span></button>; })}</div></>}</section>}{tab === "surahs" && <div className="surah-grid">{surahs.map((item) => <button className="card surah-card" key={item.id} onClick={() => setSurah(item)}><span>{item.number}</span><strong>{item.name}</strong><b dir="rtl">{item.arabicName}</b><small>{workspace.islam.surahProgress[item.id] ? `✓ ${t("learned")}` : `${item.verses.length} ${t("verse")}`}</small></button>)}</div>}{tab === "azkar" && <><div className="toolbar azkar-tabs">{azkarCategories.map((item) => <button className={category === item.id ? "active" : ""} key={item.id} onClick={() => setCategory(item.id)}>{workspace.settings.language === "en" ? item.en : item.ru}</button>)}</div><div className="azkar-list">{azkar.filter((item) => item.category === category).map((item) => { const count = workspace.islam.azkar[today]?.[item.id] || 0; return <article className="card azkar-card" key={item.id}><p dir="rtl">{item.arabic}</p><span>{item.tajik}</span><small>{item.russian}</small><button onClick={() => update((next) => { const counts = next.islam.azkar[today] || (next.islam.azkar[today] = {}); counts[item.id] = Math.min(item.target, (counts[item.id] || 0) + 1); })}>{count}/{item.target}</button></article>; })}</div></>}{surah && <div className="modal-backdrop"><section className="modal surah-modal"><header><h2>{surah.name} · {surah.arabicName}</h2><button onClick={() => setSurah(null)}>×</button></header><div className="surah-content"><p className="arabic" dir="rtl">{basmala.arabic}</p>{surah.verses.map((verse, index) => <article key={index}><span>{index + 1}</span><p className="arabic" dir="rtl">{verse.arabic}</p><p>{verse.tajik}</p><small>{verse.russian}</small></article>)}<button className="primary" onClick={() => update((next) => { next.islam.surahProgress[surah.id] = !next.islam.surahProgress[surah.id]; }).then(() => setSurah(null))}>{workspace.islam.surahProgress[surah.id] ? t("reset") : t("markLearned")}</button></div></section></div>}</>;
+  return (
+    <>
+      <section className="page-heading islam-heading">
+        <div>
+          <p className="eyebrow">{t("islam").toUpperCase()}</p>
+          <h1>{t("islam")}</h1>
+          <p>{t("islamSub")}</p>
+        </div>
+        <strong>
+          {learned}/{surahs.length}
+          <small> {t("learned").toLowerCase()}</small>
+        </strong>
+      </section>
+      <div className="segments islam-tabs">
+        {(["prayer", "surahs", "azkar"] as const).map((key) => (
+          <button key={key} className={tab === key ? "active" : ""} onClick={() => setTab(key)}>
+            {t(key)}
+          </button>
+        ))}
+      </div>
+      {tab === "prayer" && (
+        <section>
+          {error ? (
+            <article className="card empty-state">{t("prayerLoadError")}</article>
+          ) : !times ? (
+            <article className="card empty-state">{t("loading")}</article>
+          ) : (
+            <>
+              <article className="card prayer-hero">
+                <div>
+                  <small>
+                    {t("dushanbe").toUpperCase()} · {times.hijri}
+                  </small>
+                  <h2>
+                    {times.timings.Fajr} — {times.timings.Isha}
+                  </h2>
+                </div>
+                <button onClick={enableNotifications}>
+                  {workspace.islam.settings.notifications ? t("notifications") : t("enablePrayerReminders")}
+                </button>
+              </article>
+              <div className="prayer-grid">
+                {Object.entries(prayerNames)
+                  .filter(([key]) => key !== "Sunrise")
+                  .map(([key, label]) => {
+                    const checked = (workspace.islam.prayerLogs[today] || []).includes(key);
+                    return (
+                      <button className={`card prayer-card ${checked ? "checked" : ""}`} key={key} onClick={() => togglePrayer(key)}>
+                        <small>{label}</small>
+                        <strong>{times.timings[key]}</strong>
+                        <span>{checked ? `✓ ${t("completed")}` : t("checkIn")}</span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </>
+          )}
+        </section>
+      )}
+      {tab === "surahs" && (
+        <div className="surah-grid">
+          {surahs.map((item) => (
+            <button className="card surah-card" key={item.id} onClick={() => setSurah(item)}>
+              <span>{item.number}</span>
+              <strong>{item.name}</strong>
+              <b dir="rtl">{item.arabicName}</b>
+              <small>{workspace.islam.surahProgress[item.id] ? `✓ ${t("learned")}` : `${item.verses.length} ${t("verse")}`}</small>
+            </button>
+          ))}
+        </div>
+      )}
+      {tab === "azkar" && (
+        <>
+          <div className="toolbar azkar-tabs">
+            {azkarCategories.map((item) => (
+              <button className={category === item.id ? "active" : ""} key={item.id} onClick={() => setCategory(item.id)}>
+                {workspace.settings.language === "en" ? item.en : item.ru}
+              </button>
+            ))}
+          </div>
+          <div className="azkar-list">
+            {azkar
+              .filter((item) => item.category === category)
+              .map((item) => {
+                const count = workspace.islam.azkar[today]?.[item.id] || 0;
+                return (
+                  <article className="card azkar-card" key={item.id}>
+                    <p dir="rtl">{item.arabic}</p>
+                    <span>{item.tajik}</span>
+                    <small>{item.russian}</small>
+                    <button
+                      onClick={() =>
+                        update((next) => {
+                          const counts = next.islam.azkar[today] || (next.islam.azkar[today] = {});
+                          counts[item.id] = Math.min(item.target, (counts[item.id] || 0) + 1);
+                        })
+                      }
+                    >
+                      {count}/{item.target}
+                    </button>
+                  </article>
+                );
+              })}
+          </div>
+        </>
+      )}
+      {surah && (
+        <div className="modal-backdrop">
+          <section className="modal surah-modal">
+            <header>
+              <h2>
+                {surah.name} · {surah.arabicName}
+              </h2>
+              <button onClick={() => setSurah(null)}>×</button>
+            </header>
+            <div className="surah-content">
+              <p className="arabic" dir="rtl">
+                {basmala.arabic}
+              </p>
+              {surah.verses.map((verse, index) => (
+                <article key={index}>
+                  <span>{index + 1}</span>
+                  <p className="arabic" dir="rtl">
+                    {verse.arabic}
+                  </p>
+                  <p>{verse.tajik}</p>
+                  <small>{verse.russian}</small>
+                </article>
+              ))}
+              <button
+                className="primary"
+                onClick={() =>
+                  update((next) => {
+                    next.islam.surahProgress[surah.id] = !next.islam.surahProgress[surah.id];
+                  }).then(() => setSurah(null))
+                }
+              >
+                {workspace.islam.surahProgress[surah.id] ? t("reset") : t("markLearned")}
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+    </>
+  );
 }

@@ -10,9 +10,11 @@ export const day = (date, delta=0) => { const d=new Date(date+'T12:00:00Z'); d.s
 export function todayIn(timezone='Asia/Dushanbe', now=new Date()) {
   return new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit'}).format(now);
 }
+/** @returns {import('../types').Workspace} */
 export function emptyWorkspace() {
   return {schema:3,settings:{...defaultSettings},...Object.fromEntries(collections.map(k=>[k,[]])),islam:defaultIslam()};
 }
+/** @param {any} w @returns {import('../types').Workspace} */
 export function validate(w) {
   if(w?.schema===2){w.schema=3;w.islam=defaultIslam();}
   if (!w || w.schema!==3 || !w.settings || !['ru','en'].includes(w.settings.language)) throw Error('invalid');
@@ -70,10 +72,10 @@ export function occurs(event,date) {
 }
 export const isDue = (h,date) => date >= (h.startDate||'0000') && (!h.endDate||date<=h.endDate) && (!h.weekdays?.length||h.weekdays.includes(new Date(date+'T12:00:00Z').getUTCDay()));
 export function streak(h,date) {
-  let current=0,best=0,run=0; const checked=new Set(h.completions||[]);
+  let best=0,run=0; const checked=new Set(h.completions||[]);
   const first=h.startDate || [...checked].sort()[0] || date;
   for(let d=first;d<=date;d=day(d,1)) { if(!isDue(h,d))continue; if(checked.has(d)){run++;best=Math.max(best,run);}else if(d!==date)run=0; }
-  current=run; return {current,best};
+  return {current:run,best};
 }
 export function completeTask(w,task,today) {
   task.status=task.status==='completed'?'todo':'completed';

@@ -4,7 +4,30 @@ import { LegacyTasksPanel } from "./LegacyTasksPanel";
 
 describe("LegacyTasksPanel", () => {
   it("keeps task filters, details and completion actions available", () => {
-    const html = renderToStaticMarkup(<LegacyTasksPanel tasks={[{ id: "task-1", title: "Ship", date: "2026-09-30", status: "todo", priority: "high", subtasks: [{ title: "Test", done: true }] }]} projects={[{ id: "project-1", title: "n-os" }]} mode="list" filter="today" projectFilter="project-1" priorityFilter="all" sort="date" savedViews={[{ id: "v1", name: "Focus", filter: "today", projectFilter: "", priorityFilter: "high", sort: "priority", mode: "list" }]} activeSavedView="v1" today="2026-09-30" label={(key) => key} formatDate={(value) => value || "—"} onMove={() => {}} onQuickSave={() => {}} onSaveView={() => {}} onDeleteView={() => {}} />);
+    const html = renderToStaticMarkup(
+      <LegacyTasksPanel
+        tasks={[
+          { id: "task-1", title: "Ship", date: "2026-09-30", status: "todo", priority: "high", subtasks: [{ title: "Test", done: true }] },
+        ]}
+        projects={[{ id: "project-1", title: "n-os" }]}
+        mode="list"
+        filter="today"
+        projectFilter="project-1"
+        priorityFilter="all"
+        sort="date"
+        savedViews={[
+          { id: "v1", name: "Focus", filter: "today", projectFilter: "", priorityFilter: "high", sort: "priority", mode: "list" },
+        ]}
+        activeSavedView="v1"
+        today="2026-09-30"
+        label={(key) => key}
+        formatDate={(value) => value || "—"}
+        onMove={() => {}}
+        onQuickSave={() => {}}
+        onSaveView={() => {}}
+        onDeleteView={() => {}}
+      />,
+    );
     expect(html).toContain('data-action="task-mode"');
     expect(html).toContain('id="task-filter"');
     expect(html).toContain('id="project-filter"');
@@ -21,7 +44,28 @@ describe("LegacyTasksPanel", () => {
   });
 
   it("renders every board status", () => {
-    const html = renderToStaticMarkup(<LegacyTasksPanel tasks={[]} projects={[]} mode="board" filter="all" projectFilter="" priorityFilter="all" sort="date" savedViews={[{ id: "v1", name: "Focus", filter: "today", projectFilter: "", priorityFilter: "high", sort: "priority", mode: "list" }]} activeSavedView="v1" today="2026-09-30" label={(key) => key} formatDate={() => "—"} onMove={() => {}} onQuickSave={() => {}} onSaveView={() => {}} onDeleteView={() => {}} />);
+    const html = renderToStaticMarkup(
+      <LegacyTasksPanel
+        tasks={[]}
+        projects={[]}
+        mode="board"
+        filter="all"
+        projectFilter=""
+        priorityFilter="all"
+        sort="date"
+        savedViews={[
+          { id: "v1", name: "Focus", filter: "today", projectFilter: "", priorityFilter: "high", sort: "priority", mode: "list" },
+        ]}
+        activeSavedView="v1"
+        today="2026-09-30"
+        label={(key) => key}
+        formatDate={() => "—"}
+        onMove={() => {}}
+        onQuickSave={() => {}}
+        onSaveView={() => {}}
+        onDeleteView={() => {}}
+      />,
+    );
     for (const status of ["todo", "progress", "completed", "cancelled"]) expect(html).toContain(status);
   });
 });

@@ -4,6 +4,8 @@ const pendingKey='n-os-pending-workspace-v1';
 function readPending(){try{return JSON.parse(localStorage.getItem(pendingKey)||'null');}catch{return null;}}
 function writePending(value){try{if(value)localStorage.setItem(pendingKey,JSON.stringify(value));else localStorage.removeItem(pendingKey);}catch{/* The in-memory draft remains available even when device storage is full. */}}
 export class WorkspaceStore {
+  /** @type {import('../types').Workspace} */
+  data;
   constructor(){this.data=emptyWorkspace();this.revision=0;this.loaded=false;this.busy=false;this.dirty=false;this.conflict=false;}
   async load(){
     const pending=readPending();let result;

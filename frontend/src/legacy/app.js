@@ -1,5 +1,5 @@
 import {WorkspaceStore} from './store.js';
-import {collections,id,day,iso,todayIn,emptyWorkspace,validate,toMinor,occurs,isDue,streak,completeTask,goalProgress,balance,totals,weekDays,migrateLegacy} from './domain.js';
+import {collections,id,day,iso,todayIn,validate,toMinor,occurs,isDue,streak,completeTask,goalProgress,balance,weekDays,migrateLegacy} from './domain.js';
 import {translate} from './i18n.js';
 import {icon} from './icons.js';
 import {basmala,surahs,azkar,azkarCategories} from './islam-content.js';
@@ -31,7 +31,6 @@ import {alignPrevious,compareMetrics,forecastExpense,goalRow,lastFinishedWeekSta
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
-const $$=(s,root=document)=>[...root.querySelectorAll(s)];
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const nav=['today','tasks','calendar','habits','islam','notes','goals','projects','finance','review','settings'];
 const types={task:'tasks',event:'events',habit:'habits',note:'notes',goal:'goals',project:'projects',account:'accounts',transaction:'transactions',budget:'budgets'};
@@ -48,12 +47,11 @@ let islamTab='prayer',zikrCategory='morning',prayerState={date:'',loading:false,
 const w=()=>store.data;
 const t=k=>translate(w().settings.language,k);
 const today=()=>todayIn(w().settings.timezone);
+/** @param {string|undefined} d @param {Intl.DateTimeFormatOptions} [opts] */
 const dateLabel=(d,opts={day:'numeric',month:'short'})=>d?new Intl.DateTimeFormat(w().settings.language, {...opts,timeZone:'UTC'}).format(new Date(d+'T12:00:00Z')):'—';
 const dateTimeLabel=value=>new Intl.DateTimeFormat(w().settings.language,{dateStyle:'medium',timeStyle:'short',timeZone:w().settings.timezone}).format(new Date(value));
 const money=(n,c=w().settings.currency)=>new Intl.NumberFormat(w().settings.language,{style:'currency',currency:c}).format(n/100);
 const button=(label,action,value='',cls='btn',ico='')=>`<button type="button" class="${cls}" data-action="${action}" data-value="${esc(value)}">${ico?icon(ico):''}<span>${t(label)}</span></button>`;
-const editButton=(type,row,content,cls='row-body')=>`<button type="button" class="${cls}" data-action="detail" data-type="${type}" data-id="${row.id}">${content}</button>`;
-const empty=(type='task')=>`<div class="empty">${icon(types[type]||type)}<strong>${t('empty')}</strong><p>${t('emptyHint')}</p>${button('add','add',type,'btn','plus')}</div>`;
 const head=(key,actionType)=>`<header class="hero"><div><div class="eyebrow">n-os / ${t('workspace')}</div><h1>${t(key)}</h1></div>${actionType?button('add','add',actionType,'btn primary','plus'):''}</header>`;
 const viewMounts={today:mountTodayView,tasks:mountTasksView,calendar:mountCalendarView,habits:mountHabitsView,islam:mountIslamView,notes:mountNotesView,goals:()=>mountLinksView('goal'),projects:()=>mountLinksView('project'),finance:mountFinanceView,review:mountReviewView,settings:mountSettingsView};
 if(nav.some(key=>!viewMounts[key]))throw Error('Every primary view must have a React mount');
@@ -129,7 +127,7 @@ function genericDetailModel(type,r){
  if(type==='goal'||type==='project'){
   const linkedProjects=type==='goal'?w().projects.filter(x=>x.goalId===r.id):[],parentGoal=type==='project'?w().goals.find(x=>x.id===r.goalId):null,projectIds=new Set(linkedProjects.map(x=>x.id));
   const linkedTasks=w().tasks.filter(x=>type==='goal'?(x.goalId===r.id||projectIds.has(x.projectId)):x.projectId===r.id),linkedNotes=w().notes.filter(x=>(type==='goal'?x.goalId:x.projectId)===r.id),linkedEvents=w().events.filter(x=>(type==='goal'?x.goalId:x.projectId)===r.id),rate=type==='goal'?goalProgress(w(),r):linkedTasks.length?Math.round(linkedTasks.filter(x=>x.status==='completed').length/linkedTasks.length*100):0;
-  model.stats=[{label:t('progress'),value:`${rate}%`},{label:t('tasks'),value:`${linkedTasks.filter(x=>x.status==='completed').length}/${linkedTasks.length}`},{label:t('projects'),value:type==='goal'?linkedProjects.length:'—'},{label:t('calendar'),value:linkedEvents.length}];model.progress=rate;model.description=r.description||'';model.checklistTitle=t('milestones');model.checklist=r.milestones||[];model.relatedTitle=t('linkedItems');
+  model.stats=[{label:t('progressTitle'),value:`${rate}%`},{label:t('tasks'),value:`${linkedTasks.filter(x=>x.status==='completed').length}/${linkedTasks.length}`},{label:t('projects'),value:type==='goal'?linkedProjects.length:'—'},{label:t('calendar'),value:linkedEvents.length}];model.progress=rate;model.description=r.description||'';model.checklistTitle=t('milestones');model.checklist=r.milestones||[];model.relatedTitle=t('linkedItems');
   if(parentGoal)related.push(relatedModel('goal',parentGoal));for(const row of linkedProjects)related.push(relatedModel('project',row));for(const row of linkedTasks)related.push(relatedModel('task',row,t(row.status)));for(const row of linkedNotes)related.push(relatedModel('note',row));for(const row of linkedEvents)related.push(relatedModel('event',row,dateLabel(row.date)));
  }
  if(type==='account'){const rows=w().transactions.filter(x=>x.accountId===r.id||x.toAccountId===r.id).sort((a,b)=>b.date.localeCompare(a.date));model.stats=[{label:t('balance'),value:money(balance(w(),r),r.currency)},{label:t('transaction'),value:rows.length},{label:t('currency'),value:r.currency}];model.relatedTitle=t('history');for(const row of rows)related.push(relatedModel('transaction',row,`${dateLabel(row.date)} · ${money(row.amount,r.currency)}`));if(!rows.length)model.empty=t('noData');}
@@ -188,6 +186,7 @@ function renderNotes(){return head('notes','note')+'<div id="react-notes-view"><
 function mountNotesView(){const root=$('#react-notes-view');if(!root)return;const notes=w().notes.filter(n=>(noteFilter==='archived'?n.archived:!n.archived)&&(noteFilter!=='pinned'||n.pinned)&&(!noteQuery||`${n.title} ${n.body} ${n.tags} ${n.folder}`.toLowerCase().includes(noteQuery.toLowerCase())));reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyNotesPanel,{notes,filter:noteFilter,query:noteQuery,label:t,formatDate:value=>dateLabel(value)}));}
 function renderLinks(type){return head(types[type],type)+`<div id="react-${types[type]}-view"></div>`;}
 function mountLinksView(type){const root=$(`#react-${types[type]}-view`);if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyLinksPanel,{type,records:w()[types[type]],projects:w().projects,tasks:w().tasks,workspace:w(),label:t,formatDate:value=>dateLabel(value)}));}
+/** @param {string} anchor @param {string} period */
 function periodBounds(anchor,period){
  const y=Number(anchor.slice(0,4)),m=Number(anchor.slice(5,7));
  if(period==='month')return {start:`${anchor.slice(0,7)}-01`,end:monthEnd(anchor.slice(0,7))};
@@ -295,6 +294,8 @@ let pendingImport=null;
 function markdown(text){
  const safe=esc(text||'');const blocks=[];let html=safe.replace(/```[^\n]*\n([\s\S]*?)```/g,(_,code)=>{blocks.push('<pre><code>'+code+'</code></pre>');return `\u0000${blocks.length-1}\u0000`;});
  html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[-*] (.+)$/gm,'<div>• $1</div>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\n/g,'<br>');
+ // The NUL delimiters are private placeholders that cannot occur in user text.
+ // eslint-disable-next-line no-control-regex
  return html.replace(/\u0000(\d+)\u0000/g,(_,n)=>blocks[Number(n)]);
 }
 function searchRows(){return Object.entries(types).flatMap(([type,collection])=>w()[collection].map(row=>({id:row.id,type,title:row.title||row.category||t(row.kind),searchable:`${row.title||''} ${row.body||''} ${row.category||''} ${row.tags||''}`.toLowerCase(),iconName:types[type]})));}

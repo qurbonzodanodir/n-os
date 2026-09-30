@@ -4,7 +4,24 @@ import { LegacyHabitsPanel } from "./LegacyHabitsPanel";
 
 describe("LegacyHabitsPanel", () => {
   it("keeps detail and daily check-in actions available", () => {
-    const html = renderToStaticMarkup(<LegacyHabitsPanel habits={[{ id: "habit-1", title: "Read", goal: "20 min", currentStreak: 3, completedCount: 8, days: [{ date: "2026-09-30", label: "Wed", due: true, completed: true }, { date: "2026-10-01", label: "Thu", due: false, completed: false }] }]} label={(key) => key} />);
+    const html = renderToStaticMarkup(
+      <LegacyHabitsPanel
+        habits={[
+          {
+            id: "habit-1",
+            title: "Read",
+            goal: "20 min",
+            currentStreak: 3,
+            completedCount: 8,
+            days: [
+              { date: "2026-09-30", label: "Wed", due: true, completed: true },
+              { date: "2026-10-01", label: "Thu", due: false, completed: false },
+            ],
+          },
+        ]}
+        label={(key) => key}
+      />,
+    );
     expect(html).toContain('data-action="detail"');
     expect(html).toContain('data-type="habit"');
     expect(html).toContain('data-action="habit-check"');

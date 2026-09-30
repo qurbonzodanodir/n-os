@@ -58,13 +58,15 @@ restores the newest backup into a throw-away database to prove it is usable.
 ## Verification
 
 ```sh
-npm run check
-cd backend
+cd frontend
+npm run check        # typecheck, ESLint, Prettier, unit tests
+npx playwright test  # end-to-end tests against a real backend (first run: npx playwright install chromium)
+cd ../backend
 ruff check app migrations tests
 pytest -q
 ```
 
-GitHub Actions runs frontend tests/build/audit and backend lint/tests on every
+GitHub Actions runs frontend checks/build/audit, the Playwright suite and backend lint/tests on every
 push and pull request.
 
 ## Data safety

@@ -4,7 +4,16 @@ import { LegacyActionDialog } from "./LegacyActionDialog";
 
 describe("LegacyActionDialog", () => {
   it("renders confirmation actions and notes", () => {
-    const html = renderToStaticMarkup(<LegacyActionDialog message="Import?" note="Migration" actions={[{ key: "cancel", label: "Cancel", action: "close" }, { key: "import", label: "Import", action: "confirm-import", primary: true }]} />);
+    const html = renderToStaticMarkup(
+      <LegacyActionDialog
+        message="Import?"
+        note="Migration"
+        actions={[
+          { key: "cancel", label: "Cancel", action: "close" },
+          { key: "import", label: "Import", action: "confirm-import", primary: true },
+        ]}
+      />,
+    );
     expect(html).toContain("Import?");
     expect(html).toContain("Migration");
     expect(html).toContain('data-action="confirm-import"');

@@ -4,7 +4,9 @@ import { LegacyBootError, LegacyInstallPrompt, LegacyToast } from "./LegacyUtili
 
 describe("Legacy utility panels", () => {
   it("keeps PWA install and dismiss actions", () => {
-    const html = renderToStaticMarkup(<LegacyInstallPrompt message="Install it" canInstall label={(key) => key} icon={() => "<svg></svg>"} />);
+    const html = renderToStaticMarkup(
+      <LegacyInstallPrompt message="Install it" canInstall label={(key) => key} icon={() => "<svg></svg>"} />,
+    );
     expect(html).toContain('data-action="install-app"');
     expect(html).toContain('data-action="dismiss-install"');
     expect(html).toContain("Install it");

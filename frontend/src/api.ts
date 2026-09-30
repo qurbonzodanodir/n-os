@@ -1,8 +1,6 @@
 import type { Workspace, WorkspaceEnvelope } from "./types";
 
-const developmentHeaders: Record<string, string> = import.meta.env.DEV
-  ? { "X-User-Id": "local-owner" }
-  : {};
+const developmentHeaders: Record<string, string> = import.meta.env.DEV ? { "X-User-Id": "local-owner" } : {};
 
 async function json<T>(request: RequestInfo, init?: RequestInit): Promise<T> {
   const response = await fetch(request, init);
@@ -29,5 +27,14 @@ export const workspaceApi = {
     }),
 };
 
-export interface PrayerTimes { date: string; timings: Record<string, string>; hijri: string; timezone: string; method: string; school: string }
-export const prayerApi = { read: (date: string) => json<PrayerTimes>(`/api/v1/prayer-times?date=${date}`, { cache: "no-store", headers: developmentHeaders }) };
+export interface PrayerTimes {
+  date: string;
+  timings: Record<string, string>;
+  hijri: string;
+  timezone: string;
+  method: string;
+  school: string;
+}
+export const prayerApi = {
+  read: (date: string) => json<PrayerTimes>(`/api/v1/prayer-times?date=${date}`, { cache: "no-store", headers: developmentHeaders }),
+};

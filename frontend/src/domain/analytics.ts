@@ -2,7 +2,10 @@ import type { Goal, Project, Workspace } from "../types";
 import { goalProgress } from "./goals";
 
 export type Period = "week" | "month" | "quarter" | "year";
-export interface Range { start: string; end: string }
+export interface Range {
+  start: string;
+  end: string;
+}
 
 const OPEN = ["completed", "cancelled"];
 const DAY = 86400000;
@@ -63,19 +66,24 @@ export function periodMetrics(workspace: Workspace, range: Range, today: string,
   for (const habit of workspace.habits) {
     for (let date = range.start; date <= last; date = addDays(date, 1)) {
       const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
-      const scheduled = date >= (habit.startDate || "0000") && (!habit.endDate || date <= habit.endDate) && (!habit.weekdays?.length || habit.weekdays.includes(weekday));
+      const scheduled =
+        date >= (habit.startDate || "0000") &&
+        (!habit.endDate || date <= habit.endDate) &&
+        (!habit.weekdays?.length || habit.weekdays.includes(weekday));
       if (!scheduled) continue;
       due++;
       if (habit.completions.includes(date)) checked++;
     }
   }
 
-  const money = workspace.transactions.filter((item) => within(item.date, range) && workspace.accounts.find((account) => account.id === item.accountId)?.currency === currency);
+  const money = workspace.transactions.filter(
+    (item) => within(item.date, range) && workspace.accounts.find((account) => account.id === item.accountId)?.currency === currency,
+  );
   return {
     completed: completedTasks.length,
     created: tasks.filter((task) => within(task.createdAt, range)).length,
     overdue: tasks.filter((task) => task.date && within(task.date, range) && task.date < today && !OPEN.includes(task.status)).length,
-    consistency: due ? Math.round(checked / due * 100) : 0,
+    consistency: due ? Math.round((checked / due) * 100) : 0,
     notes: workspace.notes.filter((note) => within(note.createdAt, range)).length,
     income: money.filter((item) => item.kind === "income").reduce((sum, item) => sum + item.amount, 0),
     expense: money.filter((item) => item.kind === "expense").reduce((sum, item) => sum + item.amount, 0),
@@ -83,7 +91,12 @@ export function periodMetrics(workspace: Workspace, range: Range, today: string,
   };
 }
 
-export interface Delta { current: number; previous: number; change: number; percent: number | null }
+export interface Delta {
+  current: number;
+  previous: number;
+  change: number;
+  percent: number | null;
+}
 export type MetricKey = "completed" | "created" | "overdue" | "consistency" | "notes" | "income" | "expense";
 export const metricKeys: MetricKey[] = ["completed", "created", "overdue", "consistency", "notes", "income", "expense"];
 
@@ -91,7 +104,12 @@ export function compareMetrics(current: PeriodMetrics, previous: PeriodMetrics):
   const result = {} as Record<MetricKey, Delta>;
   for (const key of metricKeys) {
     const change = current[key] - previous[key];
-    result[key] = { current: current[key], previous: previous[key], change, percent: previous[key] ? Math.round(change / previous[key] * 100) : null };
+    result[key] = {
+      current: current[key],
+      previous: previous[key],
+      change,
+      percent: previous[key] ? Math.round((change / previous[key]) * 100) : null,
+    };
   }
   return result;
 }
@@ -114,33 +132,61 @@ export function forecastExpense(workspace: Workspace, month: string, today: stri
   const daysInMonth = daysBetween(start, end);
   const daysElapsed = today > end ? daysInMonth : today < start ? 0 : daysBetween(start, today);
   const spent = periodMetrics(workspace, { start, end }, today, currency).expense;
-  const budget = workspace.budgets.filter((item) => item.monthKey === month && item.currency === currency).reduce((sum, item) => sum + item.amount, 0);
-  const projected = daysElapsed >= daysInMonth ? spent : daysElapsed ? Math.round(spent / daysElapsed * daysInMonth) : 0;
+  const budget = workspace.budgets
+    .filter((item) => item.monthKey === month && item.currency === currency)
+    .reduce((sum, item) => sum + item.amount, 0);
+  const projected = daysElapsed >= daysInMonth ? spent : daysElapsed ? Math.round((spent / daysElapsed) * daysInMonth) : 0;
   return {
-    spent, daysElapsed, daysInMonth, budget, projected,
+    spent,
+    daysElapsed,
+    daysInMonth,
+    budget,
+    projected,
     dailyAverage: daysElapsed ? Math.round(spent / daysElapsed) : 0,
     overBudget: budget && projected > budget ? projected - budget : 0,
     reliable: daysElapsed >= 7,
   };
 }
 
-export interface ProgressRow { id: string; title: string; percent: number; done: number; total: number; overdue: number }
+export interface ProgressRow {
+  id: string;
+  title: string;
+  percent: number;
+  done: number;
+  total: number;
+  overdue: number;
+}
 
 const linked = (workspace: Workspace, predicate: (task: Workspace["tasks"][number]) => boolean, today: string) => {
   const tasks = workspace.tasks.filter((task) => predicate(task) && task.status !== "cancelled");
-  return { done: tasks.filter((task) => task.status === "completed").length, total: tasks.length, overdue: tasks.filter((task) => task.status !== "completed" && task.date && task.date < today).length };
+  return {
+    done: tasks.filter((task) => task.status === "completed").length,
+    total: tasks.length,
+    overdue: tasks.filter((task) => task.status !== "completed" && task.date && task.date < today).length,
+  };
 };
 
 export function projectProgress(workspace: Workspace, project: Project, today: string): ProgressRow {
   const { done, total, overdue } = linked(workspace, (task) => task.projectId === project.id, today);
-  return { id: project.id, title: project.title, percent: total ? Math.round(done / total * 100) : 0, done, total, overdue };
+  return { id: project.id, title: project.title, percent: total ? Math.round((done / total) * 100) : 0, done, total, overdue };
 }
 
 export function goalRow(workspace: Workspace, goal: Goal, today: string): ProgressRow {
   const projectIds = new Set(workspace.projects.filter((project) => project.goalId === goal.id).map((project) => project.id));
-  const { done, total, overdue } = linked(workspace, (task) => task.goalId === goal.id || (!!task.projectId && projectIds.has(task.projectId)), today);
+  const { done, total, overdue } = linked(
+    workspace,
+    (task) => task.goalId === goal.id || (!!task.projectId && projectIds.has(task.projectId)),
+    today,
+  );
   const steps = goal.milestones || [];
-  return { id: goal.id, title: goal.title, percent: goalProgress(workspace, goal), done: done + steps.filter((step) => step.done).length, total: total + steps.length, overdue };
+  return {
+    id: goal.id,
+    title: goal.title,
+    percent: goalProgress(workspace, goal),
+    done: done + steps.filter((step) => step.done).length,
+    total: total + steps.length,
+    overdue,
+  };
 }
 
 export interface WeeklyReport {
@@ -159,15 +205,27 @@ export function weeklyReport(workspace: Workspace, start: string, today: string)
   const currency = workspace.settings.currency;
   const categories = new Map<string, number>();
   for (const item of workspace.transactions) {
-    if (item.kind !== "expense" || !within(item.date, range) || workspace.accounts.find((account) => account.id === item.accountId)?.currency !== currency) continue;
+    if (
+      item.kind !== "expense" ||
+      !within(item.date, range) ||
+      workspace.accounts.find((account) => account.id === item.accountId)?.currency !== currency
+    )
+      continue;
     const name = item.category || "—";
     categories.set(name, (categories.get(name) || 0) + item.amount);
   }
   return {
-    week: start, start: range.start, end: range.end, currency, generatedAt: today,
+    week: start,
+    start: range.start,
+    end: range.end,
+    currency,
+    generatedAt: today,
     metrics: periodMetrics(workspace, range, today, currency),
     previous: periodMetrics(workspace, previousRange(range, "week"), today, currency),
-    categories: [...categories.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3).map(([name, amount]) => ({ name, amount })),
+    categories: [...categories.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([name, amount]) => ({ name, amount })),
   };
 }
 
@@ -190,7 +248,8 @@ export function weeklyReportText(report: WeeklyReport, label: (key: string) => s
     `${label("income")}: ${money(m.income)}`,
     `${label("expense")}: ${money(m.expense)} ${arrow(m.expense, p.expense)} (${money(p.expense)})`,
   ];
-  if (report.categories.length) lines.push("", `${label("topExpenses")}: ${report.categories.map((item) => `${item.name} ${money(item.amount)}`).join(", ")}`);
+  if (report.categories.length)
+    lines.push("", `${label("topExpenses")}: ${report.categories.map((item) => `${item.name} ${money(item.amount)}`).join(", ")}`);
   return lines.join("\n");
 }
 

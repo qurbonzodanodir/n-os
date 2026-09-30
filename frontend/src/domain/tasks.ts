@@ -15,9 +15,7 @@ export function nextTaskDate(date: string, repeat: Task["repeat"]): string | nul
   const targetDay = value.getUTCDate();
   value.setUTCDate(1);
   value.setUTCMonth(value.getUTCMonth() + 1);
-  const lastDay = new Date(
-    Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + 1, 0),
-  ).getUTCDate();
+  const lastDay = new Date(Date.UTC(value.getUTCFullYear(), value.getUTCMonth() + 1, 0)).getUTCDate();
   value.setUTCDate(Math.min(targetDay, lastDay));
   return value.toISOString().slice(0, 10);
 }

@@ -11,7 +11,9 @@ export default function App() {
   return (
     <>
       <div className="wallpaper" aria-hidden="true" />
-      <div id="app"><p className="boot">n-os · …</p></div>
+      <div id="app">
+        <p className="boot">n-os · …</p>
+      </div>
       <aside id="install-prompt" className="install-prompt glass" aria-live="polite" hidden />
       <dialog id="dialog" aria-labelledby="dialog-title" />
       <div id="toast" role="status" />

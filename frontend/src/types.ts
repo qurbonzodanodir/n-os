@@ -82,11 +82,48 @@ export interface Goal extends Project {
   milestones?: Array<{ title: string; done: boolean }>;
 }
 
-export interface Account extends IdentifiedRecord { opening: number; currency: string; createdAt?: string; updatedAt?: string }
-export interface Transaction { id: string; kind: "income" | "expense" | "transfer"; amount: number; date: string; category?: string; title?: string; accountId: string; toAccountId?: string; createdAt?: string; updatedAt?: string }
-export interface Budget extends IdentifiedRecord { category: string; amount: number; monthKey: string; currency: string; createdAt?: string; updatedAt?: string }
-export interface Review { id: string; week: string; wins?: string; improve?: string; nextFocus?: string; createdAt?: string; updatedAt?: string }
-export interface IslamState { settings: { city: string; country: string; method: number; school: number; reminderMinutes: number; notifications: boolean }; prayerLogs: Record<string, string[]>; surahProgress: Record<string, boolean>; azkar: Record<string, Record<string, number>>; arabicLessons: Record<string, unknown> }
+export interface Account extends IdentifiedRecord {
+  opening: number;
+  currency: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface Transaction {
+  id: string;
+  kind: "income" | "expense" | "transfer";
+  amount: number;
+  date: string;
+  category?: string;
+  title?: string;
+  accountId: string;
+  toAccountId?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface Budget extends IdentifiedRecord {
+  category: string;
+  amount: number;
+  monthKey: string;
+  currency: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface Review {
+  id: string;
+  week: string;
+  wins?: string;
+  improve?: string;
+  nextFocus?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+export interface IslamState {
+  settings: { city: string; country: string; method: number; school: number; reminderMinutes: number; notifications: boolean };
+  prayerLogs: Record<string, string[]>;
+  surahProgress: Record<string, boolean>;
+  azkar: Record<string, Record<string, number>>;
+  arabicLessons: Record<string, unknown>;
+}
 
 export interface WorkspaceSettings {
   name: string;
@@ -99,8 +136,25 @@ export interface WorkspaceSettings {
   remindersEnabled?: boolean;
   morningTime?: string;
   eveningTime?: string;
-  weeklyReports?: Array<{ week: string; start: string; end: string; currency: string; generatedAt: string; metrics: unknown; previous: unknown; categories: Array<{ name: string; amount: number }> }>;
-  taskViews?: Array<{ id: string; name: string; filter: string; projectFilter: string; priorityFilter: string; sort: string; mode: string }>;
+  weeklyReports?: Array<{
+    week: string;
+    start: string;
+    end: string;
+    currency: string;
+    generatedAt: string;
+    metrics: unknown;
+    previous: unknown;
+    categories: Array<{ name: string; amount: number }>;
+  }>;
+  taskViews?: Array<{
+    id: string;
+    name: string;
+    filter: string;
+    projectFilter: string;
+    priorityFilter: string;
+    sort: string;
+    mode: string;
+  }>;
 }
 
 export interface Workspace {

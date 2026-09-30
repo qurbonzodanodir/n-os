@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { habitIsDue, habitStreak } from "./habits";
 
-const habit = { id: "h", title: "Чтение", startDate: "2026-09-21", weekdays: [1, 3, 5], completions: ["2026-09-21", "2026-09-23", "2026-09-25", "2026-09-28"] };
+const habit = {
+  id: "h",
+  title: "Чтение",
+  startDate: "2026-09-21",
+  weekdays: [1, 3, 5],
+  completions: ["2026-09-21", "2026-09-23", "2026-09-25", "2026-09-28"],
+};
 
 describe("habits", () => {
   it("respects selected weekdays", () => {

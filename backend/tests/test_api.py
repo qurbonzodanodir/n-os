@@ -171,3 +171,72 @@ def test_prayer_times_forward_the_requested_location(monkeypatch) -> None:
     assert response.json()["method"] == "ISNA" and response.json()["school"] == "Shafi'i"
     assert response.json()["timings"]["Fajr"] == "05:00"
     assert bad.status_code == 422
+
+
+def put(client: TestClient, owner: str, payload: dict, revision: int):
+    return client.put(
+        "/api/v1/workspace",
+        headers={"X-User-Id": owner},
+        json={"workspace": payload, "revision": revision},
+    )
+
+
+def test_ready_checks_the_database() -> None:
+    with TestClient(app) as client:
+        assert client.get("/api/v1/ready").json() == {"ok": True}
+
+
+def test_owners_cannot_read_each_others_data() -> None:
+    alice, bob = f"alice-{uuid4()}", f"bob-{uuid4()}"
+    with TestClient(app) as client:
+        assert put(client, alice, workspace(), 0).status_code == 200
+        headers = {"X-User-Id": bob}
+        assert client.get("/api/v1/workspace", headers=headers).json()["workspace"] is None
+        assert client.get("/api/v1/workspace/history/1", headers=headers).status_code == 404
+        assert client.get("/api/v1/workspace/history", headers=headers).json() == []
+
+
+def test_unknown_revision_is_not_found() -> None:
+    owner = f"test-{uuid4()}"
+    with TestClient(app) as client:
+        put(client, owner, workspace(), 0)
+        missing = client.get("/api/v1/workspace/history/99", headers={"X-User-Id": owner})
+    assert missing.status_code == 404
+
+
+def test_only_the_latest_fifty_revisions_are_kept() -> None:
+    reset_rate_limits()
+    owner = f"test-{uuid4()}"
+    with TestClient(app) as client:
+        for revision in range(55):
+            payload = workspace()
+            payload["settings"]["name"] = f"v{revision}"
+            assert put(client, owner, payload, revision).status_code == 200
+        headers = {"X-User-Id": owner}
+        assert client.get("/api/v1/workspace/history/5", headers=headers).status_code == 404
+        assert client.get("/api/v1/workspace/history/6", headers=headers).status_code == 200
+        assert len(client.get("/api/v1/workspace/history", headers=headers).json()) == 20
+    reset_rate_limits()
+
+
+def test_oversized_bodies_are_rejected_before_parsing() -> None:
+    with TestClient(app) as client:
+        response = client.put(
+            "/api/v1/workspace",
+            headers={"X-User-Id": f"test-{uuid4()}", "Content-Type": "application/json"},
+            content=b"{" + b" " * 1_600_000 + b"}",
+        )
+    assert response.status_code == 413
+
+
+def test_records_need_unique_ids_and_titles() -> None:
+    duplicate = workspace()
+    duplicate["tasks"] = [
+        {"id": "same", "title": "a", "status": "todo"},
+        {"id": "same", "title": "b", "status": "todo"},
+    ]
+    untitled = workspace()
+    untitled["tasks"] = [{"id": "one", "title": "  ", "status": "todo"}]
+    with TestClient(app) as client:
+        assert put(client, f"test-{uuid4()}", duplicate, 0).status_code == 422
+        assert put(client, f"test-{uuid4()}", untitled, 0).status_code == 422

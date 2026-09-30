@@ -18,7 +18,11 @@ export function accountBalance(workspace: Workspace, account: Account): number {
 }
 
 export function financeTotals(workspace: Workspace, month: string, currency: string) {
-  const transactions = workspace.transactions.filter((transaction) => transaction.date.startsWith(month) && workspace.accounts.find((account) => account.id === transaction.accountId)?.currency === currency);
+  const transactions = workspace.transactions.filter(
+    (transaction) =>
+      transaction.date.startsWith(month) &&
+      workspace.accounts.find((account) => account.id === transaction.accountId)?.currency === currency,
+  );
   return {
     income: transactions.filter((transaction) => transaction.kind === "income").reduce((sum, transaction) => sum + transaction.amount, 0),
     expense: transactions.filter((transaction) => transaction.kind === "expense").reduce((sum, transaction) => sum + transaction.amount, 0),
