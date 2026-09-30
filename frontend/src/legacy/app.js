@@ -20,6 +20,7 @@ import {LegacyShellPanel} from '../components/LegacyShellPanel.tsx';
 import {LegacyInstallPrompt,LegacyToast} from '../components/LegacyUtilityPanels.tsx';
 import {LegacyDialogPanel} from '../components/LegacyDialogPanel.tsx';
 import {LegacySearchDialog} from '../components/LegacySearchDialog.tsx';
+import {LegacyPickerDialog} from '../components/LegacyPickerDialog.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -316,8 +317,8 @@ document.addEventListener('click',async event=>{
  if(action==='edit-item'){const split=value.indexOf(':');return openEditor(value.slice(0,split),value.slice(split+1));}
  if(action==='detail-period'){detailPeriod=value;if(detailItem)return openDetails(detailItem.type,detailItem.id);return;}
  if(action==='detail-prev'||action==='detail-next'){const sign=action==='detail-prev'?-1:1;detailCursor=detailPeriod==='month'?`${shiftMonth(detailCursor.slice(0,7),sign)}-01`:`${Number(detailCursor.slice(0,4))+sign}-01-01`;if(detailItem)return openDetails(detailItem.type,detailItem.id);return;}
- if(action==='quick'){showDialog(t('add'),`<div class="picker">${Object.keys(types).map(type=>button(type,'add',type,'',types[type])).join('')}</div>`);return;}
- if(action==='more'){showDialog(t('workspace'),`<div class="picker">${nav.map(v=>button(v,'view',v,'',v)).join('')}${button('search','search','','','search')}${button('notifications','notifications','','','bell')}</div>`);return;}
+ if(action==='quick'){showReactDialog(t('add'),createElement(LegacyPickerDialog,{items:Object.keys(types).map(type=>({key:type,label:t(type),action:'add',value:type,iconName:types[type]})),icon}));return;}
+ if(action==='more'){showReactDialog(t('workspace'),createElement(LegacyPickerDialog,{items:[...nav.map(value=>({key:value,label:t(value),action:'view',value,iconName:value})),{key:'search',label:t('search'),action:'search',iconName:'search'},{key:'notifications',label:t('notifications'),action:'notifications',iconName:'bell'}],icon}));return;}
  if(action==='language'){w().settings.language=w().settings.language==='ru'?'en':'ru';await persist();return;}
  if(action==='theme'){const effective=document.documentElement.dataset.theme;w().settings.theme=effective==='dark'?'light':'dark';await persist();return;}
  if(action==='dismiss-install'){sessionStorage.setItem('n-os-install-dismissed','1');updateInstallPrompt();return;}
