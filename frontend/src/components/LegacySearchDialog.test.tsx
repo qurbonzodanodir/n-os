@@ -8,6 +8,7 @@ describe("LegacySearchDialog", () => {
       <LegacySearchDialog
         rows={[{ id: "task-1", type: "task", title: "Ship n-os", searchable: "ship n-os", iconName: "tasks" }]}
         commands={[{ key: "add-task", title: "Create task", searchable: "create task", iconName: "tasks", action: "add", value: "task" }]}
+        parseQuick={(text) => ({ title: text, tags: [] })}
         label={(key) => key}
         icon={() => "<svg></svg>"}
       />,

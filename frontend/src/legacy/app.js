@@ -27,6 +27,7 @@ import {LegacyActionDialog} from '../components/LegacyActionDialog.tsx';
 import {LegacySurahReader} from '../components/LegacySurahReader.tsx';
 import {LegacyItemEditor} from '../components/LegacyItemEditor.tsx';
 import {LegacyDetailPanel} from '../components/LegacyDetailPanel.tsx';
+import {parseQuickTask} from '../domain/quickAdd.ts';
 import {alignPrevious,compareMetrics,forecastExpense,goalRow,lastFinishedWeekStart,metricTone,periodMetrics,previousRange,projectProgress,weeklyReport,weeklyReportText} from '../domain/analytics.ts';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
@@ -89,9 +90,10 @@ function renderTasks(){
   return head('tasks','task')+'<div id="react-tasks-view"></div>';
 }
 let taskViewModel=[];
-function mountTasksView(){const root=$('#react-tasks-view');if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTasksPanel,{tasks:taskViewModel,projects:w().projects,mode:taskMode,filter:taskFilter,projectFilter,priorityFilter:taskPriorityFilter,sort:taskSort,savedViews:w().settings.taskViews||[],activeSavedView:activeTaskView,today:today(),label:t,formatDate:value=>dateLabel(value),onMove:moveTask,onQuickSave:quickSaveTask,onSaveView:saveTaskView,onDeleteView:deleteTaskView}));}
+function mountTasksView(){const root=$('#react-tasks-view');if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTasksPanel,{tasks:taskViewModel,projects:w().projects,mode:taskMode,filter:taskFilter,projectFilter,priorityFilter:taskPriorityFilter,sort:taskSort,savedViews:w().settings.taskViews||[],activeSavedView:activeTaskView,today:today(),label:t,formatDate:value=>dateLabel(value),onMove:moveTask,onQuickSave:quickSaveTask,onSaveView:saveTaskView,onDeleteView:deleteTaskView,parseQuick:text=>parseQuickTask(text,{today:today(),projects:w().projects}),onQuickAdd:quickAddTask}));}
 async function moveTask(taskId,status,beforeId){const next=structuredClone(w()),from=next.tasks.findIndex(task=>task.id===taskId);if(from<0)return;const [task]=next.tasks.splice(from,1);task.status=status;task.completedAt=status==='completed'?(task.completedAt||today()):null;let target=beforeId?next.tasks.findIndex(row=>row.id===beforeId):-1;if(target<0){const indexes=next.tasks.map((row,index)=>row.status===status?index:-1).filter(index=>index>=0);target=indexes.length?indexes.at(-1)+1:next.tasks.length;}next.tasks.splice(target,0,task);next.tasks.forEach((row,index)=>{row.order=index;});store.data=next;if(await persist())toast(t('saved'));}
 async function quickSaveTask(taskId,changes){if(!changes.title)return toast(t('invalid'));const next=structuredClone(w()),task=next.tasks.find(row=>row.id===taskId);if(!task)return;Object.assign(task,changes,{completedAt:changes.status==='completed'?(task.completedAt||today()):null,updatedAt:today()});validate(next);store.data=next;if(await persist())toast(t('saved'));}
+async function quickAddTask(text){const parsed=parseQuickTask(text,{today:today(),projects:w().projects});if(!parsed.title)return toast(t('invalid'));const next=structuredClone(w());next.tasks.push({id:id(),title:parsed.title.slice(0,200),description:'',status:'todo',priority:parsed.priority||'medium',date:parsed.date||today(),time:parsed.time||'09:00',repeat:'none',tags:parsed.tags.join(', '),subtasks:[],completedAt:null,...(parsed.projectId?{projectId:parsed.projectId}:{}),createdAt:today(),updatedAt:today()});validate(next);store.data=next;if(await persist())toast(t('saved'));}
 async function saveTaskView(name){const views=w().settings.taskViews||[];const row={id:id(),name,filter:taskFilter,projectFilter,priorityFilter:taskPriorityFilter,sort:taskSort,mode:taskMode};w().settings.taskViews=[...views,row];activeTaskView=row.id;if(await persist())toast(t('saved'));}
 async function deleteTaskView(viewId){w().settings.taskViews=(w().settings.taskViews||[]).filter(row=>row.id!==viewId);activeTaskView='';if(await persist())toast(t('deleted'));}
 function applyTaskView(viewId){activeTaskView=viewId;const saved=(w().settings.taskViews||[]).find(row=>row.id===viewId);if(saved)({filter:taskFilter,projectFilter,priorityFilter:taskPriorityFilter,sort:taskSort,mode:taskMode}=saved);render();}
@@ -373,6 +375,7 @@ document.addEventListener('click',async event=>{
  if(action==='note-filter'){noteFilter=value;render();return;}
  if(action==='project-tasks'){projectFilter=value;return go('tasks');}
  if(action==='review-period'){reviewPeriod=value;render();return;}
+ if(action==='quick-task'){closeDialog();return quickAddTask(value);}
  if(action==='report-copy'){try{await navigator.clipboard.writeText(weeklyReportPlain);toast(t('copied'));}catch{toast(t('invalid'));}return;}
  if(action==='report-download'){const url=URL.createObjectURL(new Blob([weeklyReportPlain],{type:'text/plain;charset=utf-8'})),link=document.createElement('a');link.href=url;link.download=`n-os-weekly-${weeklyReportWeek}.txt`;link.click();setTimeout(()=>URL.revokeObjectURL(url),1000);return;}
  if(action==='review-prev'||action==='review-next')return shiftReview(action==='review-prev'?-1:1);
@@ -385,7 +388,7 @@ document.addEventListener('click',async event=>{
  if(action==='confirm-import'&&pendingImport){store.data=pendingImport;pendingImport=null;if(await persist())closeDialog();return;}
  if(action==='retry')return persist();
  if(action==='reload')return load();
- if(action==='search'){showReactDialog(t('commandPalette'),createElement(LegacySearchDialog,{rows:searchRows(),commands:commandRows(),label:t,icon}));return;}
+ if(action==='search'){showReactDialog(t('commandPalette'),createElement(LegacySearchDialog,{rows:searchRows(),commands:commandRows(),parseQuick:text=>parseQuickTask(text,{today:today(),projects:w().projects}),label:t,icon}));return;}
  if(action==='notifications'){const date=today();showReactDialog(t('notifications'),createElement(LegacyNotificationsDialog,{tasks:w().tasks.filter(x=>x.date<=date&&!['completed','cancelled'].includes(x.status)),events:w().events.filter(e=>Number(e.reminder)>0&&occurs(e,date)),date,label:t,formatDate:value=>dateLabel(value),icon}));return;}
  if(action==='save-settings'){const form=$('#settings-form');if(!form.reportValidity())return;const values=new FormData(form);Object.assign(w().settings,Object.fromEntries(values),{weekStart:Number(values.get('weekStart')),reducedTransparency:values.has('reducedTransparency'),remindersEnabled:values.has('remindersEnabled')});await persist();return;}
  if(action==='save-reflection'){const form=$('#reflection-form'),values=Object.fromEntries(new FormData(form)),week=form.dataset.week;const old=w().reviews.find(r=>r.week===week);if(old)Object.assign(old,values);else w().reviews.push({id:id(),week,...values});await persist();toast(t('saved'));}

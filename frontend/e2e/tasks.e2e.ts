@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { seed, stored, task, today, workspace } from "./helpers";
+import { addDays, seed, stored, task, today, workspace } from "./helpers";
 
 test("creates a task through the add dialog and persists it", async ({ page, request }) => {
   await seed(request, workspace());
@@ -62,4 +62,28 @@ test("filters, sorting and saved views survive a reload", async ({ page, request
   await expect(page.locator("#task-sort")).toHaveValue("title");
   await expect(page.getByText("Bravo")).toHaveCount(0);
   await expect(page.getByText("Alpha")).toBeVisible();
+});
+
+test("quick add turns one line into a scheduled task", async ({ page, request }) => {
+  await seed(request, workspace({ projects: [{ id: "p1", title: "Website" }] }));
+  await page.goto("/#tasks");
+  const input = page.locator("#quick-add-task");
+  await input.fill("call Ali tomorrow 18:00 #website !high");
+  await expect(page.locator(".quick-add-preview")).toContainText("call Ali");
+  await expect(page.locator(".quick-add-preview")).toContainText("18:00");
+  await input.press("Enter");
+  await expect(page.getByText("call Ali")).toBeVisible();
+  await expect
+    .poll(async () => (await stored(request)).tasks[0])
+    .toMatchObject({ title: "call Ali", time: "18:00", priority: "high", projectId: "p1", date: addDays(today(), 1) });
+});
+
+test("the command palette can add a task from a sentence", async ({ page, request }) => {
+  await seed(request, workspace());
+  await page.goto("/#today");
+  await expect(page.locator(".search-trigger")).toBeVisible();
+  await page.keyboard.press("Control+k");
+  await page.locator("#global-search").fill("water plants friday !low");
+  await page.locator(".search-result", { hasText: "Add task" }).click();
+  await expect.poll(async () => (await stored(request)).tasks[0]).toMatchObject({ title: "water plants", priority: "low" });
 });

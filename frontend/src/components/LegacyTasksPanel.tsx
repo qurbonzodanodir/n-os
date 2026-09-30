@@ -1,4 +1,5 @@
 import { useState, type DragEvent, type FormEvent } from "react";
+import type { ParsedTask } from "../domain/quickAdd";
 import type { Project, Task, TaskPriority, TaskStatus } from "../types";
 
 interface QuickTaskChanges {
@@ -33,6 +34,8 @@ interface Props {
   onQuickSave: (taskId: string, changes: QuickTaskChanges) => void | Promise<void>;
   onSaveView: (name: string) => void | Promise<void>;
   onDeleteView: (id: string) => void | Promise<void>;
+  parseQuick: (text: string) => ParsedTask;
+  onQuickAdd: (text: string) => void | Promise<void>;
 }
 
 const statuses: TaskStatus[] = ["todo", "progress", "completed", "cancelled"];
@@ -55,7 +58,10 @@ export function LegacyTasksPanel({
   onQuickSave,
   onSaveView,
   onDeleteView,
+  parseQuick,
+  onQuickAdd,
 }: Props) {
+  const [draft, setDraft] = useState("");
   const [dragging, setDragging] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [savingView, setSavingView] = useState(false);
@@ -64,8 +70,47 @@ export function LegacyTasksPanel({
     void onMove(dragging, status, beforeId);
     setDragging(null);
   };
+  const parsed = draft.trim() ? parseQuick(draft) : null;
+  const project = parsed?.projectId ? projects.find((item) => item.id === parsed.projectId) : undefined;
   return (
     <>
+      <form
+        className="quick-add"
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!parsed?.title) return;
+          void onQuickAdd(draft);
+          setDraft("");
+        }}
+      >
+        <input
+          id="quick-add-task"
+          name="quick"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          placeholder={t("quickAddHint")}
+          aria-label={t("quickAdd")}
+          autoComplete="off"
+          maxLength={240}
+        />
+        <button type="submit" className="btn primary" disabled={!parsed?.title}>
+          {t("add")}
+        </button>
+        {parsed && (
+          <div className="quick-add-preview" aria-live="polite">
+            <strong>{parsed.title || "…"}</strong>
+            {parsed.date && <span className="tag">{formatDate(parsed.date)}</span>}
+            {parsed.time && <span className="tag">{parsed.time}</span>}
+            {parsed.priority && <span className="tag">{t(parsed.priority)}</span>}
+            {project && <span className="tag">{project.title}</span>}
+            {parsed.tags.map((tag) => (
+              <span className="tag" key={tag}>
+                #{tag}
+              </span>
+            ))}
+          </div>
+        )}
+      </form>
       <div className="toolbar">
         <div className="segments">
           {["list", "board"].map((value) => (

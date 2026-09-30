@@ -1,3 +1,4 @@
+import type { ParsedTask } from "../domain/quickAdd";
 import { useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 interface SearchRow {
@@ -19,11 +20,12 @@ interface CommandRow {
 interface Props {
   rows: SearchRow[];
   commands: CommandRow[];
+  parseQuick: (text: string) => ParsedTask;
   label: (key: string) => string;
   icon: (key: string) => string;
 }
 
-export function LegacySearchDialog({ rows, commands, label: t, icon }: Props) {
+export function LegacySearchDialog({ rows, commands, parseQuick, label: t, icon }: Props) {
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const resultsRef = useRef<HTMLDivElement>(null);
@@ -35,8 +37,25 @@ export function LegacySearchDialog({ rows, commands, label: t, icon }: Props) {
     const recordMatches = rows
       .filter((row) => !normalized || row.searchable.includes(normalized))
       .map((row) => ({ ...row, kind: "record" as const }));
-    return [...commandMatches, ...recordMatches].slice(0, 30);
-  }, [commands, normalized, rows]);
+    // Offered after real commands so that typing "finance" still opens Finance on Enter.
+    const parsed = normalized.length > 2 ? parseQuick(query) : null;
+    const quickAdd = parsed?.title
+      ? [
+          {
+            key: "quick-task",
+            title: `${t("addTaskNamed")}: ${parsed.title}`,
+            subtitle: [parsed.date, parsed.time, parsed.priority && t(parsed.priority)].filter(Boolean).join(" · "),
+            searchable: "",
+            iconName: "tasks",
+            action: "quick-task",
+            value: query.trim(),
+            kind: "command" as const,
+          },
+        ]
+      : [];
+    return [...commandMatches, ...quickAdd, ...recordMatches].slice(0, 30);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t is a stable translator for the dialog's lifetime
+  }, [commands, normalized, parseQuick, query, rows]);
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
