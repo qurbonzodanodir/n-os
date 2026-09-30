@@ -9,6 +9,7 @@ import {LegacySettingsPanel} from '../components/LegacySettingsPanel.tsx';
 import {LegacyNotesPanel} from '../components/LegacyNotesPanel.tsx';
 import {LegacyLinksPanel} from '../components/LegacyLinksPanel.tsx';
 import {LegacyReviewPanel} from '../components/LegacyReviewPanel.tsx';
+import {LegacyTasksPanel} from '../components/LegacyTasksPanel.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -49,6 +50,7 @@ function render(){
   if(view==='notes')mountNotesView();
   if(view==='goals'||view==='projects')mountLinksView(view==='goals'?'goal':'project');
   if(view==='review')mountReviewView();
+  if(view==='tasks')mountTasksView();
   updateInstallPrompt();
 }
 function renderView(){return ({today:renderToday,tasks:renderTasks,calendar:renderCalendar,habits:renderHabits,islam:renderIslam,notes:renderNotes,goals:()=>renderLinks('goal'),projects:()=>renderLinks('project'),finance:renderFinance,review:renderReview,settings:renderSettings})[view]();}
@@ -68,8 +70,11 @@ function taskRow(x,completionDate=today()){const overdue=x.date&&x.date<today()&
 function eventRow(e){return `<div class="row"><time class="event-time">${esc(e.time)}</time><i class="event-line"></i>${editButton('event',e,`<strong>${esc(e.title)}</strong><small>${esc(e.time)}–${esc(e.endTime)}${e.location?' · '+esc(e.location):''}${e.repeat&&e.repeat!=='none'?' · '+t(e.repeat):''}</small>`)}</div>`;}
 function renderTasks(){
   const filtered=w().tasks.filter(x=>(!projectFilter||x.projectId===projectFilter)&&(taskFilter==='all'||taskFilter==='today'&&x.date===today()||taskFilter==='upcoming'&&x.date>today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='overdue'&&x.date<today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='completed'&&x.status==='completed')).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
-  return head('tasks','task')+`<div class="toolbar">${segments(['list','board'],taskMode,'task-mode')}<select class="filter" id="task-filter" aria-label="${t('tasks')}">${['all','today','upcoming','overdue','completed'].map(v=>`<option value="${v}" ${v===taskFilter?'selected':''}>${t(v)}</option>`).join('')}</select><span class="spacer"></span><select class="filter" id="project-filter" aria-label="${t('project')}"><option value="">${t('projects')}: ${t('all')}</option>${w().projects.map(p=>`<option value="${p.id}" ${p.id===projectFilter?'selected':''}>${esc(p.title)}</option>`).join('')}</select></div>`+(taskMode==='list'?`<article class="card glass"><div class="rows">${filtered.length?filtered.map(taskRow).join(''):empty('task')}</div></article>`:`<div class="board">${['todo','progress','completed','cancelled'].map(status=>`<section class="board-col"><header><strong>${t(status)}</strong><span>${filtered.filter(x=>x.status===status).length}</span></header>${filtered.filter(x=>x.status===status).map(x=>`<article class="task-card glass">${editButton('task',x,`<span class="tag ${x.priority}">${t(x.priority)}</span><strong>${esc(x.title)}</strong><small>${dateLabel(x.date)}</small>`)}<div class="row"><small>${(x.subtasks||[]).filter(s=>s.done).length}/${(x.subtasks||[]).length}</small><button class="check ${x.status==='completed'?'done':''}" data-action="task-check" data-id="${x.id}" aria-label="${t('done')}">${x.status==='completed'?icon('check'):''}</button></div></article>`).join('')}</section>`).join('')}</div>`);
+  taskViewModel=filtered;
+  return head('tasks','task')+'<div id="react-tasks-view"></div>';
 }
+let taskViewModel=[];
+function mountTasksView(){const root=$('#react-tasks-view');if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTasksPanel,{tasks:taskViewModel,projects:w().projects,mode:taskMode,filter:taskFilter,projectFilter,today:today(),label:t,formatDate:value=>dateLabel(value)}));}
 function agendaFor(date){const es=w().events.filter(e=>occurs(e,date)).sort((a,b)=>a.time.localeCompare(b.time));const tasks=w().tasks.filter(x=>x.date===date&&x.status!=='cancelled');return `<div class="agenda-head"><h3>${dateLabel(date,{weekday:'short',day:'numeric',month:'long'})}</h3>${iconButton('add','add-date',date,'plus')}</div><div class="rows">${es.map(eventRow).join('')}${tasks.map(taskRow).join('')}${!es.length&&!tasks.length?`<p class="meta" style="padding:18px 0">${t('empty')}</p>`:''}</div>`;}
 function renderCalendar(){
  const current=new Date(selected+'T12:00:00Z'),start=selected.slice(0,8)+'01';
