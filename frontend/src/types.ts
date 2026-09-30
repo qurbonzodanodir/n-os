@@ -99,6 +99,7 @@ export interface WorkspaceSettings {
   remindersEnabled?: boolean;
   morningTime?: string;
   eveningTime?: string;
+  taskViews?: Array<{ id: string; name: string; filter: string; projectFilter: string; priorityFilter: string; sort: string; mode: string }>;
 }
 
 export interface Workspace {
