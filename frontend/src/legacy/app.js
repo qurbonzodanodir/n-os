@@ -27,6 +27,8 @@ import {LegacyActionDialog} from '../components/LegacyActionDialog.tsx';
 import {LegacySurahReader} from '../components/LegacySurahReader.tsx';
 import {LegacyItemEditor} from '../components/LegacyItemEditor.tsx';
 import {LegacyDetailPanel} from '../components/LegacyDetailPanel.tsx';
+import {LegacyShortcutsDialog} from '../components/LegacyShortcutsDialog.tsx';
+import {resolveShortcut} from '../domain/shortcuts.ts';
 import {parseQuickTask} from '../domain/quickAdd.ts';
 import {alignPrevious,compareMetrics,forecastExpense,goalRow,lastFinishedWeekStart,metricTone,periodMetrics,previousRange,projectProgress,weeklyReport,weeklyReportText} from '../domain/analytics.ts';
 const store=new WorkspaceStore();
@@ -396,6 +398,24 @@ document.addEventListener('click',async event=>{
 document.addEventListener('submit',e=>{e.preventDefault();if(e.target.id==='item-form')submitItem(e.target);});
 document.addEventListener('change',async e=>{if(e.target.id==='task-filter'){taskFilter=e.target.value;activeTaskView='';render();}if(e.target.id==='task-priority-filter'){taskPriorityFilter=e.target.value;activeTaskView='';render();}if(e.target.id==='task-sort'){taskSort=e.target.value;activeTaskView='';render();}if(e.target.id==='task-saved-view'){applyTaskView(e.target.value);}if(e.target.id==='project-filter'){projectFilter=e.target.value;activeTaskView='';render();}if(e.target.id==='finance-month'){financeMonth=e.target.value||today().slice(0,7);render();}if(e.target.id==='note-query'){noteQuery=e.target.value;render();}if(e.target.id==='prayer-reminder'){w().islam.settings.reminderMinutes=Number(e.target.value);await persist();schedulePrayerNotifications();}});
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();document.querySelector('[data-action=search]')?.click();}else if(e.key==='Escape'&&$('#dialog').open){e.preventDefault();closeDialog();}});
+let goPending=false,goTimer;
+function isTyping(){const el=document.activeElement;return !!el&&(el.isContentEditable||['INPUT','TEXTAREA','SELECT'].includes(el.tagName));}
+function moveItemFocus(step){const items=[...document.querySelectorAll('.main [data-action="detail"]')].filter(el=>el.offsetParent!==null);if(!items.length)return;const at=items.indexOf(document.activeElement);items[at<0?(step>0?0:items.length-1):Math.min(items.length-1,Math.max(0,at+step))].focus();}
+function focusedRow(){return document.activeElement?.closest?.('.row, .task-card')||null;}
+document.addEventListener('keydown',e=>{
+ if(e.defaultPrevented||e.isComposing)return;
+ const result=resolveShortcut(goPending,{key:e.key,ctrlKey:e.ctrlKey,metaKey:e.metaKey,altKey:e.altKey,typing:isTyping(),dialogOpen:$('#dialog').open});
+ clearTimeout(goTimer);goPending=result.pending;if(goPending)goTimer=setTimeout(()=>{goPending=false;},1200);
+ const action=result.action;if(!action)return;e.preventDefault();
+ if(action.type==='view')go(action.value);
+ else if(action.type==='new-task')openEditor('task');
+ else if(action.type==='focus-quick'){if(view==='tasks')$('#quick-add-task')?.focus();else document.querySelector('[data-action=search]')?.click();}
+ else if(action.type==='help')showReactDialog(t('shortcuts'),createElement(LegacyShortcutsDialog,{label:t}));
+ else if(action.type==='next')moveItemFocus(1);
+ else if(action.type==='previous')moveItemFocus(-1);
+ else if(action.type==='complete')focusedRow()?.querySelector('[data-action="task-check"]')?.click();
+ else if(action.type==='edit')focusedRow()?.querySelector('.quick-edit')?.click();
+});
 window.addEventListener('hashchange',()=>{if(nav.includes(location.hash.slice(1))){view=location.hash.slice(1);render();}});
 window.addEventListener('beforeunload',e=>{if(store.dirty||store.busy){e.preventDefault();e.returnValue='';}});
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(w().settings.theme==='system')render();});
