@@ -21,6 +21,7 @@ import {LegacyInstallPrompt,LegacyToast} from '../components/LegacyUtilityPanels
 import {LegacyDialogPanel} from '../components/LegacyDialogPanel.tsx';
 import {LegacySearchDialog} from '../components/LegacySearchDialog.tsx';
 import {LegacyPickerDialog} from '../components/LegacyPickerDialog.tsx';
+import {LegacyNotificationsDialog} from '../components/LegacyNotificationsDialog.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -79,8 +80,6 @@ function renderToday(){
 }
 let todayViewModel=null;
 function mountTodayView(){const root=$('#react-today-view');if(!root||!todayViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTodayPanel,{...todayViewModel,label:t,formatDate:value=>dateLabel(value),icon}));}
-function taskRow(x,completionDate=today()){const overdue=x.date&&x.date<today()&&!['completed','cancelled'].includes(x.status);return `<div class="row ${x.status==='completed'?'done':''}"><button class="check ${x.status==='completed'?'done':''}" data-action="task-check" data-id="${x.id}" data-value="${completionDate}" aria-label="${t('done')} ${esc(x.title)}">${x.status==='completed'?icon('check'):''}</button>${editButton('task',x,`<strong>${esc(x.title)}</strong><small class="${overdue?'overdue':''}">${x.date?dateLabel(x.date):''} ${esc(x.time||'')} · ${t(x.status)}${x.subtasks?.length?' · '+x.subtasks.filter(s=>s.done).length+'/'+x.subtasks.length:''}</small>`)}<span class="tag ${x.priority}">${t(x.priority||'medium')}</span></div>`;}
-function eventRow(e){return `<div class="row"><time class="event-time">${esc(e.time)}</time><i class="event-line"></i>${editButton('event',e,`<strong>${esc(e.title)}</strong><small>${esc(e.time)}–${esc(e.endTime)}${e.location?' · '+esc(e.location):''}${e.repeat&&e.repeat!=='none'?' · '+t(e.repeat):''}</small>`)}</div>`;}
 function renderTasks(){
   const filtered=w().tasks.filter(x=>(!projectFilter||x.projectId===projectFilter)&&(taskFilter==='all'||taskFilter==='today'&&x.date===today()||taskFilter==='upcoming'&&x.date>today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='overdue'&&x.date<today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='completed'&&x.status==='completed')).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
   taskViewModel=filtered;
@@ -371,7 +370,7 @@ document.addEventListener('click',async event=>{
  if(action==='retry')return persist();
  if(action==='reload')return load();
  if(action==='search'){showReactDialog(t('search'),createElement(LegacySearchDialog,{rows:searchRows(),label:t,icon}));return;}
- if(action==='notifications'){const date=today();const rows=w().tasks.filter(x=>x.date<=date&&!['completed','cancelled'].includes(x.status)).map(taskRow).join('')+w().events.filter(e=>Number(e.reminder)>0&&occurs(e,date)).map(eventRow).join('');showDialog(t('notifications'),`<p class="form-note">${t('reminderNote')}</p>${rows||`<p>${t('noReminders')}</p>`}`);return;}
+ if(action==='notifications'){const date=today();showReactDialog(t('notifications'),createElement(LegacyNotificationsDialog,{tasks:w().tasks.filter(x=>x.date<=date&&!['completed','cancelled'].includes(x.status)),events:w().events.filter(e=>Number(e.reminder)>0&&occurs(e,date)),date,label:t,formatDate:value=>dateLabel(value),icon}));return;}
  if(action==='note-preview'){let preview=$('#note-preview');if(!preview){$('#item-form').insertAdjacentHTML('beforeend','<div id="note-preview" class="md"></div>');preview=$('#note-preview');}preview.innerHTML=markdown($('#item-form textarea[name=body]').value);preview.scrollIntoView({block:'nearest'});return;}
  if(action==='save-settings'){const form=$('#settings-form');if(!form.reportValidity())return;const values=new FormData(form);Object.assign(w().settings,Object.fromEntries(values),{weekStart:Number(values.get('weekStart')),reducedTransparency:values.has('reducedTransparency'),remindersEnabled:values.has('remindersEnabled')});await persist();return;}
  if(action==='save-reflection'){const form=$('#reflection-form'),values=Object.fromEntries(new FormData(form)),week=form.dataset.week;const old=w().reviews.find(r=>r.week===week);if(old)Object.assign(old,values);else w().reviews.push({id:id(),week,...values});await persist();toast(t('saved'));}
