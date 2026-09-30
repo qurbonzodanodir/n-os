@@ -11,6 +11,7 @@ import {LegacyLinksPanel} from '../components/LegacyLinksPanel.tsx';
 import {LegacyReviewPanel} from '../components/LegacyReviewPanel.tsx';
 import {LegacyTasksPanel} from '../components/LegacyTasksPanel.tsx';
 import {LegacyHabitsPanel} from '../components/LegacyHabitsPanel.tsx';
+import {LegacyCalendarPanel} from '../components/LegacyCalendarPanel.tsx';
 const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
@@ -53,6 +54,7 @@ function render(){
   if(view==='review')mountReviewView();
   if(view==='tasks')mountTasksView();
   if(view==='habits')mountHabitsView();
+  if(view==='calendar')mountCalendarView();
   updateInstallPrompt();
 }
 function renderView(){return ({today:renderToday,tasks:renderTasks,calendar:renderCalendar,habits:renderHabits,islam:renderIslam,notes:renderNotes,goals:()=>renderLinks('goal'),projects:()=>renderLinks('project'),finance:renderFinance,review:renderReview,settings:renderSettings})[view]();}
@@ -79,16 +81,15 @@ let taskViewModel=[];
 function mountTasksView(){const root=$('#react-tasks-view');if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTasksPanel,{tasks:taskViewModel,projects:w().projects,mode:taskMode,filter:taskFilter,projectFilter,today:today(),label:t,formatDate:value=>dateLabel(value)}));}
 function agendaFor(date){const es=w().events.filter(e=>occurs(e,date)).sort((a,b)=>a.time.localeCompare(b.time));const tasks=w().tasks.filter(x=>x.date===date&&x.status!=='cancelled');return `<div class="agenda-head"><h3>${dateLabel(date,{weekday:'short',day:'numeric',month:'long'})}</h3>${iconButton('add','add-date',date,'plus')}</div><div class="rows">${es.map(eventRow).join('')}${tasks.map(taskRow).join('')}${!es.length&&!tasks.length?`<p class="meta" style="padding:18px 0">${t('empty')}</p>`:''}</div>`;}
 function renderCalendar(){
- const current=new Date(selected+'T12:00:00Z'),start=selected.slice(0,8)+'01';
+ const start=selected.slice(0,8)+'01';
  const offset=(new Date(start+'T12:00:00Z').getUTCDay()-Number(w().settings.weekStart)+7)%7;
  const dates=Array.from({length:42},(_,i)=>day(start,i-offset));
- const controls=`<div class="toolbar">${segments(['month','week','day','agenda'],calendarMode,'calendar-mode')}<span class="spacer"></span>${button('today','calendar-today')}</div><div class="cal-header"><h2>${dateLabel(selected,{month:'long',year:'numeric'})}</h2><div class="actions">${iconButton('back','calendar-prev','','arrow')}${iconButton('next','calendar-next','','arrow')}</div></div>`;
- let content='';
- if(calendarMode==='month')content=`<div class="split"><article class="card glass">${controls}<div class="cal-grid">${dates.slice(0,7).map(d=>`<div class="weekday">${dateLabel(d,{weekday:'short'})}</div>`).join('')}${dates.map(d=>{const es=w().events.filter(e=>occurs(e,d));const tasks=w().tasks.filter(x=>x.date===d&&x.status!=='cancelled');return `<button data-action="date" data-value="${d}" class="cal-day ${d===selected?'selected':''} ${d===today()?'today':''} ${d.slice(0,7)!==start.slice(0,7)?'out':''}"><strong>${Number(d.slice(8))}</strong>${es.slice(0,2).map(e=>`<small>${esc(e.title)}</small>`).join('')}${tasks.length?`<small>${t('tasks')}: ${tasks.length}</small>`:''}</button>`;}).join('')}</div></article><aside class="card glass">${agendaFor(selected)}</aside></div>`;
- else if(calendarMode==='week')content=`<article class="card glass">${controls}<div class="week-columns">${weekDays(selected,w().settings.weekStart).map(d=>`<section class="week-column"><h3>${dateLabel(d,{weekday:'short',day:'numeric'})}</h3>${w().events.filter(e=>occurs(e,d)).map(e=>editButton('event',e,`<small>${esc(e.time)}</small><strong>${esc(e.title)}</strong>`,'event-block')).join('')}${w().tasks.filter(x=>x.date===d).map(x=>editButton('task',x,`<small>${t('task')}</small><strong>${esc(x.title)}</strong>`,'event-block')).join('')}${iconButton('add','add-date',d,'plus')}</section>`).join('')}</div></article>`;
- else content=`<article class="card glass">${controls}${Array.from({length:calendarMode==='day'?1:7},(_,i)=>agendaFor(day(selected,i))).join('')}</article>`;
- return head('calendar','event')+content;
+ const agenda=date=>({date,label:dateLabel(date,{weekday:'short',day:'numeric',month:'long'}),events:w().events.filter(e=>occurs(e,date)).sort((a,b)=>a.time.localeCompare(b.time)),tasks:w().tasks.filter(x=>x.date===date&&x.status!=='cancelled')});
+ calendarViewModel={mode:calendarMode,monthLabel:dateLabel(selected,{month:'long',year:'numeric'}),weekdayLabels:dates.slice(0,7).map(d=>dateLabel(d,{weekday:'short'})),monthDays:dates.map(date=>{const events=w().events.filter(e=>occurs(e,date)),tasks=w().tasks.filter(x=>x.date===date&&x.status!=='cancelled');return {date,day:Number(date.slice(8)),selected:date===selected,today:date===today(),outside:date.slice(0,7)!==start.slice(0,7),eventTitles:events.slice(0,2).map(e=>e.title),taskCount:tasks.length};}),weekDays:weekDays(selected,w().settings.weekStart).map(date=>({...agenda(date),tasks:w().tasks.filter(x=>x.date===date)})),agendaDays:Array.from({length:calendarMode==='day'?1:7},(_,i)=>agenda(day(selected,i))),selectedAgenda:agenda(selected)};
+ return head('calendar','event')+'<div id="react-calendar-view"></div>';
 }
+let calendarViewModel=null;
+function mountCalendarView(){const root=$('#react-calendar-view');if(!root||!calendarViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyCalendarPanel,{...calendarViewModel,label:t,formatDate:value=>dateLabel(value)}));}
 function rangeDays(start,end){const result=[];for(let d=start;d<=end;d=day(d,1))result.push(d);return result;}
 function monthEnd(month){return day(`${month}-01`,new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5)),0)).getUTCDate()-1);}
 function shiftMonth(month,delta){const d=new Date(`${month}-01T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+delta);return iso(d).slice(0,7);}
