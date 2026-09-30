@@ -24,6 +24,7 @@ export interface Task extends IdentifiedRecord {
   createdAt?: string;
   updatedAt?: string;
   sourceId?: string;
+  order?: number;
   subtasks?: Array<{ title: string; done: boolean }>;
 }
 

@@ -84,12 +84,14 @@ function renderToday(){
 let todayViewModel=null;
 function mountTodayView(){const root=$('#react-today-view');if(!root||!todayViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTodayPanel,{...todayViewModel,label:t,formatDate:value=>dateLabel(value),icon}));}
 function renderTasks(){
-  const filtered=w().tasks.filter(x=>(!projectFilter||x.projectId===projectFilter)&&(taskFilter==='all'||taskFilter==='today'&&x.date===today()||taskFilter==='upcoming'&&x.date>today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='overdue'&&x.date<today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='completed'&&x.status==='completed')).sort((a,b)=>(a.date||'9999').localeCompare(b.date||'9999'));
+  const filtered=w().tasks.filter(x=>(!projectFilter||x.projectId===projectFilter)&&(taskFilter==='all'||taskFilter==='today'&&x.date===today()||taskFilter==='upcoming'&&x.date>today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='overdue'&&x.date<today()&&!['completed','cancelled'].includes(x.status)||taskFilter==='completed'&&x.status==='completed')).sort((a,b)=>(a.order??Number.MAX_SAFE_INTEGER)-(b.order??Number.MAX_SAFE_INTEGER)||(a.date||'9999').localeCompare(b.date||'9999'));
   taskViewModel=filtered;
   return head('tasks','task')+'<div id="react-tasks-view"></div>';
 }
 let taskViewModel=[];
-function mountTasksView(){const root=$('#react-tasks-view');if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTasksPanel,{tasks:taskViewModel,projects:w().projects,mode:taskMode,filter:taskFilter,projectFilter,today:today(),label:t,formatDate:value=>dateLabel(value)}));}
+function mountTasksView(){const root=$('#react-tasks-view');if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyTasksPanel,{tasks:taskViewModel,projects:w().projects,mode:taskMode,filter:taskFilter,projectFilter,today:today(),label:t,formatDate:value=>dateLabel(value),onMove:moveTask,onQuickSave:quickSaveTask}));}
+async function moveTask(taskId,status,beforeId){const next=structuredClone(w()),from=next.tasks.findIndex(task=>task.id===taskId);if(from<0)return;const [task]=next.tasks.splice(from,1);task.status=status;task.completedAt=status==='completed'?(task.completedAt||today()):null;let target=beforeId?next.tasks.findIndex(row=>row.id===beforeId):-1;if(target<0){const indexes=next.tasks.map((row,index)=>row.status===status?index:-1).filter(index=>index>=0);target=indexes.length?indexes.at(-1)+1:next.tasks.length;}next.tasks.splice(target,0,task);next.tasks.forEach((row,index)=>{row.order=index;});store.data=next;if(await persist())toast(t('saved'));}
+async function quickSaveTask(taskId,changes){if(!changes.title)return toast(t('invalid'));const next=structuredClone(w()),task=next.tasks.find(row=>row.id===taskId);if(!task)return;Object.assign(task,changes,{completedAt:changes.status==='completed'?(task.completedAt||today()):null,updatedAt:today()});validate(next);store.data=next;if(await persist())toast(t('saved'));}
 function renderCalendar(){
  const start=selected.slice(0,8)+'01';
  const offset=(new Date(start+'T12:00:00Z').getUTCDay()-Number(w().settings.weekStart)+7)%7;
