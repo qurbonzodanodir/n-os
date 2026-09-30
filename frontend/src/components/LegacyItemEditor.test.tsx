@@ -9,7 +9,9 @@ describe("LegacyItemEditor", () => {
     expect(html).toContain('name="title"');
     expect(html).toContain('name="weekday"');
     expect(html).toContain('data-action="project-tasks"');
-    expect(html).toContain('data-action="delete"');
-    expect(html).toContain('data-action="note-preview"');
+    expect(html).toContain('class="btn danger"');
+    expect(html).not.toContain('data-action="delete"');
+    expect(html).toContain("preview");
+    expect(html).not.toContain('data-action="note-preview"');
   });
 });

@@ -1,12 +1,23 @@
+import { useRef, useState } from "react";
+
 interface Option { value: string | number; label: string }
 interface EditorField { name: string; value: string | number; type: string; label: string; options?: Option[]; full?: boolean; required?: boolean; maxLength?: number; min?: number; step?: number }
 interface CheckItem { name: string; label: string; checked: boolean; value?: string | number }
 interface CheckSection { key: string; label?: string; full?: boolean; items: CheckItem[] }
 interface RelatedAction { key: string; label: string; action: string; value?: string; type?: string; id?: string }
-interface Props { fields: EditorField[]; checks?: CheckSection[]; related?: RelatedAction[]; eventNote?: string; canDelete: boolean; canPreview: boolean; label: (key: string) => string }
+interface Props { fields: EditorField[]; checks?: CheckSection[]; related?: RelatedAction[]; eventNote?: string; canDelete: boolean; canPreview: boolean; renderPreview?: (value: string) => string; label: (key: string) => string }
 
-export function LegacyItemEditor({ fields, checks = [], related = [], eventNote, canDelete, canPreview, label: t }: Props) {
-  return <form id="item-form"><div className="form-grid">{fields.map((field) => <Field value={field} key={field.name} />)}{checks.map((section) => <div className={`field ${section.full ? "full" : ""}`} key={section.key}>{section.label && <label>{section.label}</label>}<div className="actions" style={{ flexWrap: "wrap" }}>{section.items.map((item) => <label className="check-field" key={`${item.name}-${item.value || item.label}`}><input type="checkbox" name={item.name} value={item.value} defaultChecked={item.checked} />{item.label}</label>)}</div></div>)}</div>{eventNote && <p className="form-note">{eventNote}</p>}{related.length > 0 && <div className="form-links">{related.map((item) => <button type="button" className="text-btn" data-action={item.action} data-value={item.value} data-type={item.type} data-id={item.id} key={item.key}><span>{item.label}</span></button>)}</div>}<p className="form-error" role="alert" /><div className="form-footer">{canDelete && <button type="button" className="btn danger" data-action="delete"><span>{t("delete")}</span></button>}{canPreview && <button type="button" className="btn" data-action="note-preview"><span>{t("preview")}</span></button>}<button type="button" className="btn" data-action="close"><span>{t("cancel")}</span></button><button type="submit" className="btn primary">{t("save")}</button></div></form>;
+export function LegacyItemEditor({ fields, checks = [], related = [], eventNote, canDelete, canPreview, renderPreview, label: t }: Props) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [previewHtml, setPreviewHtml] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const preview = () => {
+    const body = String(new FormData(formRef.current || undefined).get("body") || "");
+    setPreviewHtml(renderPreview?.(body) || body);
+    requestAnimationFrame(() => previewRef.current?.scrollIntoView({ block: "nearest" }));
+  };
+  return <form id="item-form" ref={formRef}><div className="form-grid">{fields.map((field) => <Field value={field} key={field.name} />)}{checks.map((section) => <div className={`field ${section.full ? "full" : ""}`} key={section.key}>{section.label && <label>{section.label}</label>}<div className="actions" style={{ flexWrap: "wrap" }}>{section.items.map((item) => <label className="check-field" key={`${item.name}-${item.value || item.label}`}><input type="checkbox" name={item.name} value={item.value} defaultChecked={item.checked} />{item.label}</label>)}</div></div>)}</div>{eventNote && <p className="form-note">{eventNote}</p>}{related.length > 0 && <div className="form-links">{related.map((item) => <button type="button" className="text-btn" data-action={item.action} data-value={item.value} data-type={item.type} data-id={item.id} key={item.key}><span>{item.label}</span></button>)}</div>}<p className="form-error" role="alert" />{previewHtml && <div id="note-preview" className="md" ref={previewRef} dangerouslySetInnerHTML={{ __html: previewHtml }} />}{confirmDelete && <div className="error-banner">{t("deleteAsk")}<div className="actions"><button type="button" className="btn danger" data-action="confirm-delete"><span>{t("delete")}</span></button><button type="button" className="btn" onClick={() => setConfirmDelete(false)}><span>{t("cancel")}</span></button></div></div>}<div className="form-footer">{canDelete && <button type="button" className="btn danger" onClick={() => setConfirmDelete(true)}><span>{t("delete")}</span></button>}{canPreview && <button type="button" className="btn" onClick={preview}><span>{t("preview")}</span></button>}<button type="button" className="btn" data-action="close"><span>{t("cancel")}</span></button><button type="submit" className="btn primary">{t("save")}</button></div></form>;
 }
 
 function Field({ value: field }: { value: EditorField }) {

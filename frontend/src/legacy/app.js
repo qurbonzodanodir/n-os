@@ -242,7 +242,7 @@ function openEditor(type,itemId=null){
  if(type==='transaction')fields.push(fieldModel('kind',r.kind||'expense','select',['expense','income','transfer']),fieldModel('amount',r.amount?(r.amount/100).toFixed(2):'','text',[],false,true),fieldModel('date',date,'date',[],false,true),fieldModel('category',r.category||''),fieldModel('accountId',r.accountId||w().accounts[0]?.id,'select',w().accounts.map(a=>[a.id,a.title+' · '+a.currency])),fieldModel('toAccountId',r.toAccountId||'','select',[['','none'],...w().accounts.map(a=>[a.id,a.title+' · '+a.currency])]))
  if(type==='budget')fields.push(fieldModel('category',r.category||'','text',[],false,true),fieldModel('amount',r.amount?(r.amount/100).toFixed(2):'','text',[],false,true),fieldModel('monthKey',r.monthKey||financeMonth,'month',[],false,true),fieldModel('currency',r.currency||w().settings.currency,'select',['TJS','USD','EUR','RUB','CNY']));
  const related=item&&type==='project'?[{key:'tasks',label:t('tasks'),action:'project-tasks',value:item.id},...w().notes.filter(n=>n.projectId===item.id).map(n=>({key:`note-${n.id}`,label:n.title,action:'detail',type:'note',id:n.id})),...w().events.filter(e=>e.projectId===item.id).map(e=>({key:`event-${e.id}`,label:e.title,action:'detail',type:'event',id:e.id}))]:[];
- showReactDialog(t(item?'edit':'add')+' · '+t(type),createElement(LegacyItemEditor,{fields,checks,related,eventNote:type==='event'?`${t('seriesEdit')} ${t('reminderNote')}`:'',canDelete:!!item,canPreview:type==='note',label:t}));
+ showReactDialog(t(item?'edit':'add')+' · '+t(type),createElement(LegacyItemEditor,{fields,checks,related,eventNote:type==='event'?`${t('seriesEdit')} ${t('reminderNote')}`:'',canDelete:!!item,canPreview:type==='note',renderPreview:markdown,label:t}));
 }
 function lines(text){return String(text||'').split('\n').map(s=>s.trim()).filter(Boolean).map(s=>({title:s.replace(/^\[[ xX]\]\s*/,''),done:/^\[[xX]\]/.test(s)}));}
 async function submitItem(form){
@@ -359,7 +359,6 @@ document.addEventListener('click',async event=>{
  if(action==='review-period'){reviewPeriod=value;render();return;}
  if(action==='review-prev'||action==='review-next')return shiftReview(action==='review-prev'?-1:1);
  if(action==='demo'){addSamples();await persist();return;}
- if(action==='delete'){const form=$('#item-form');if(!form.querySelector('[data-action=confirm-delete]'))form.insertAdjacentHTML('beforeend',`<div class="error-banner">${t('deleteAsk')}<div class="actions">${button('delete','confirm-delete','','btn danger')}</div></div>`);return;}
  if(action==='confirm-delete')return deleteItem();
  if(action==='undo'&&undo){store.data=undo;undo=null;await persist();toast(t('saved'));return;}
  if(action==='export')return exportData();
@@ -370,7 +369,6 @@ document.addEventListener('click',async event=>{
  if(action==='reload')return load();
  if(action==='search'){showReactDialog(t('search'),createElement(LegacySearchDialog,{rows:searchRows(),label:t,icon}));return;}
  if(action==='notifications'){const date=today();showReactDialog(t('notifications'),createElement(LegacyNotificationsDialog,{tasks:w().tasks.filter(x=>x.date<=date&&!['completed','cancelled'].includes(x.status)),events:w().events.filter(e=>Number(e.reminder)>0&&occurs(e,date)),date,label:t,formatDate:value=>dateLabel(value),icon}));return;}
- if(action==='note-preview'){let preview=$('#note-preview');if(!preview){$('#item-form').insertAdjacentHTML('beforeend','<div id="note-preview" class="md"></div>');preview=$('#note-preview');}preview.innerHTML=markdown($('#item-form textarea[name=body]').value);preview.scrollIntoView({block:'nearest'});return;}
  if(action==='save-settings'){const form=$('#settings-form');if(!form.reportValidity())return;const values=new FormData(form);Object.assign(w().settings,Object.fromEntries(values),{weekStart:Number(values.get('weekStart')),reducedTransparency:values.has('reducedTransparency'),remindersEnabled:values.has('remindersEnabled')});await persist();return;}
  if(action==='save-reflection'){const form=$('#reflection-form'),values=Object.fromEntries(new FormData(form)),week=form.dataset.week;const old=w().reviews.find(r=>r.week===week);if(old)Object.assign(old,values);else w().reviews.push({id:id(),week,...values});await persist();toast(t('saved'));}
 });
