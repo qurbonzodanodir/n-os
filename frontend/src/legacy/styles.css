@@ -59,3 +59,35 @@ dialog{border:1px solid var(--line);padding:0;width:min(590px,calc(100% - 28px))
 .import-dialog{display:grid;gap:12px}.import-preview{padding:0}
 .note-card mark,.snippet mark{background:var(--blue-soft);color:inherit;border-radius:4px;padding:0 2px}.wikilink{padding:0 4px;border:0;border-radius:6px;background:var(--blue-soft);color:var(--blue);font:inherit;cursor:pointer}.wikilink.missing{background:none;color:var(--muted);text-decoration:underline dotted}
 .onboarding{padding:18px 20px;margin-bottom:18px;border:1px solid var(--line);border-radius:20px}.onboarding>header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.onboarding>header small{display:block;color:var(--muted)}.onboarding ul{list-style:none;margin:0;padding:0;display:grid;gap:2px}.onboarding li button{display:flex;align-items:center;gap:12px;width:100%;padding:10px 4px;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}.onboarding li.done button{color:var(--muted);text-decoration:line-through;cursor:default}.onboarding .check-mark{display:inline-grid;place-items:center;width:22px;height:22px;border:1.5px solid var(--line);border-radius:50%;font-size:13px;flex:0 0 auto}.onboarding li.done .check-mark{background:var(--blue);border-color:var(--blue);color:#fff}
+
+/* Icon wrappers are <span class="legacy-markup">; layout rules for plain spans must not catch them. */
+.legacy-markup{display:contents!important}
+.overdue-banner>span:not(.legacy-markup){display:grid;flex:1;min-width:0}
+.overdue-banner>.legacy-markup:first-child>svg{width:22px;flex:0 0 auto}
+
+/* Mobile polish: one tidy grid for every toolbar, a single add button, readable header. */
+@media(max-width:760px){
+ .shell{padding-bottom:164px}
+ .topbar .actions>.pref{display:none}
+ .topbar .search-trigger{display:inline-flex}
+ .topbar .search-trigger kbd{display:none}
+ .topbar .actions>.btn{min-width:42px;min-height:42px;justify-content:center}
+ .topbar .actions>.btn svg{width:20px;height:20px}
+ .hero>.btn{display:none}
+ .mobile-fab{bottom:max(98px,calc(env(safe-area-inset-bottom) + 98px))}
+
+ .toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:stretch}
+ .toolbar>.spacer{display:none}
+ .toolbar>.segments{grid-column:1/-1;width:100%;max-width:none}
+ .toolbar>.segments button{flex:1;text-align:center}
+ .toolbar>.filter,.toolbar>select,.toolbar>input,.toolbar>.btn{width:100%;min-width:0;max-width:100%;margin:0}
+ .toolbar>.btn{justify-content:center}
+ .toolbar>.meta,.toolbar>.tag{grid-column:1/-1}
+ .sync:not(.offline){display:none}
+ .toolbar select,.toolbar input.filter{padding-left:12px;padding-right:30px;text-overflow:ellipsis}
+ #finance-month,#note-query{grid-column:1/-1}
+ .card>.toolbar{padding:14px 14px 0;margin:0}
+ .row .tag{font-size:12px;padding:4px 8px}
+ .rows .row-body small{overflow-wrap:anywhere}
+ .quick-add{gap:8px}
+}

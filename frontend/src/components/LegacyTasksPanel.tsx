@@ -153,7 +153,7 @@ export function LegacyTasksPanel({
         <select className="filter" id="task-sort" aria-label={t("sortBy")} defaultValue={sort}>
           {["manual", "date", "priority", "title"].map((value) => (
             <option value={value} key={value}>
-              {t("sortBy")}: {t(value)}
+              {t("sortShort")}: {t(value)}
             </option>
           ))}
         </select>

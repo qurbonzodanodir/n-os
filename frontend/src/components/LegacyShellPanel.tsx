@@ -18,6 +18,16 @@ interface Props {
 }
 
 const mobileViews = ["today", "tasks", "calendar", "notes"];
+// The floating button adds the thing the current page is about; elsewhere it opens the type picker.
+const fabType: Record<string, string> = {
+  tasks: "task",
+  calendar: "event",
+  habits: "habit",
+  notes: "note",
+  goals: "goal",
+  projects: "project",
+  finance: "transaction",
+};
 
 export function LegacyShellPanel({
   view,
@@ -90,10 +100,10 @@ export function LegacyShellPanel({
                 <span>{t("commandPalette")}</span>
                 <kbd>⌘ K</kbd>
               </button>
-              <button type="button" className="btn" data-action="language" aria-label={t("language")}>
+              <button type="button" className="btn pref" data-action="language" aria-label={t("language")}>
                 {settings.language === "ru" ? "EN" : "RU"}
               </button>
-              <button type="button" className="btn icon-btn" data-action="theme" aria-label={t("theme")}>
+              <button type="button" className="btn icon-btn pref" data-action="theme" aria-label={t("theme")}>
                 <Markup html={icon(settings.theme === "dark" ? "moon" : "sun")} />
               </button>
               <button type="button" className="btn icon-btn" data-action="notifications" aria-label={t("notifications")}>
@@ -125,9 +135,17 @@ export function LegacyShellPanel({
           <section id="content" dangerouslySetInnerHTML={{ __html: contentHtml }} />
         </main>
       </div>
-      <button type="button" className="mobile-fab" data-action="quick" aria-label={t("add")}>
-        <Markup html={icon("plus")} />
-      </button>
+      {view !== "settings" && view !== "review" && (
+        <button
+          type="button"
+          className="mobile-fab"
+          data-action={fabType[view] ? "add" : "quick"}
+          data-value={fabType[view]}
+          aria-label={t("add")}
+        >
+          <Markup html={icon("plus")} />
+        </button>
+      )}
       <nav className="mobile-nav glass" aria-label={t("workspace")}>
         {mobileViews.map((item) => (
           <button type="button" data-action="view" data-value={item} className={view === item ? "active" : ""} key={item}>
