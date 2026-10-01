@@ -12,6 +12,7 @@ const props = {
   fullDate: "30 September 2026",
   momentumDate: "Wednesday, 30 September",
   showDemo: false,
+  onboarding: null,
   overdueCount: 2,
   commandItems: [{ type: "task" as const, id: "task-1", title: "Ship", subtitle: "priority: high" }],
   tasks: [{ id: "task-1", title: "Ship", status: "todo" as const, date: "2026-09-30", priority: "high" as const }],
@@ -37,5 +38,21 @@ describe("LegacyTodayPanel", () => {
     expect(html).toContain('data-action="task-check"');
     expect(html).toContain('data-action="habit-check"');
     expect(html).toContain('data-type="goal"');
+  });
+
+  it("shows the getting-started checklist with progress and a dismiss action", () => {
+    const html = renderToStaticMarkup(
+      <LegacyTodayPanel
+        {...props}
+        onboarding={[
+          { key: "task", done: true, action: "add", value: "task" },
+          { key: "habit", done: false, action: "add", value: "habit" },
+        ]}
+      />,
+    );
+    expect(html).toContain("onboardingTitle");
+    expect(html).toContain("1/2");
+    expect(html).toContain('data-action="dismiss-onboarding"');
+    expect(html).toContain('data-value="habit"');
   });
 });

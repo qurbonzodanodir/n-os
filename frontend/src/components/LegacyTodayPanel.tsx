@@ -29,6 +29,7 @@ interface Props {
   fullDate: string;
   momentumDate: string;
   showDemo: boolean;
+  onboarding: Array<{ key: string; done: boolean; action: string; value?: string }> | null;
   overdueCount: number;
   commandItems: CommandItem[];
   tasks: Task[];
@@ -56,6 +57,7 @@ export function LegacyTodayPanel(props: Props) {
     fullDate,
     momentumDate,
     showDemo,
+    onboarding,
     overdueCount,
     commandItems,
     tasks,
@@ -100,6 +102,36 @@ export function LegacyTodayPanel(props: Props) {
             <span>{t("demo")}</span>
           </button>
         </div>
+      )}
+      {onboarding && (
+        <section className="onboarding glass" aria-label={t("onboardingTitle")}>
+          <header>
+            <div>
+              <strong>{t("onboardingTitle")}</strong>
+              <small>
+                {onboarding.filter((step) => step.done).length}/{onboarding.length}
+              </small>
+            </div>
+            <button type="button" className="btn icon-btn" data-action="dismiss-onboarding" aria-label={t("close")}>
+              ×
+            </button>
+          </header>
+          <div className="bar" aria-hidden="true">
+            <i style={{ width: `${(onboarding.filter((step) => step.done).length / onboarding.length) * 100}%` }} />
+          </div>
+          <ul>
+            {onboarding.map((step) => (
+              <li key={step.key} className={step.done ? "done" : ""}>
+                <button type="button" data-action={step.action} data-value={step.value} disabled={step.done}>
+                  <span className="check-mark" aria-hidden="true">
+                    {step.done ? "✓" : ""}
+                  </span>
+                  {t(`onboarding_${step.key}`)}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
       )}
       {isToday && overdueCount > 0 && (
         <button type="button" className="overdue-banner glass" data-action="task-filter-view" data-value="overdue">

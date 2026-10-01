@@ -148,6 +148,7 @@ export interface WorkspaceSettings {
     previous: unknown;
     categories: Array<{ name: string; amount: number }>;
   }>;
+  onboardingDismissed?: boolean;
   recurringTransactions?: RecurringTemplate[];
   taskViews?: Array<{
     id: string;

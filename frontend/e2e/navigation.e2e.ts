@@ -104,3 +104,33 @@ test.describe("mobile swipes", () => {
       .toBe(addDays(today(), 1));
   });
 });
+
+test.describe("getting started", () => {
+  test("the checklist tracks progress and can be dismissed for good", async ({ page, request }) => {
+    await seed(request, workspace({ tasks: [task("t1", "First")] }));
+    await page.goto("/#today");
+    const card = page.locator(".onboarding");
+    await expect(card).toContainText("Getting started");
+    await expect(card).toContainText("1/4");
+    await card.locator('[data-action="dismiss-onboarding"]').click();
+    await expect(card).toHaveCount(0);
+    await expect.poll(async () => (await stored(request)).settings.onboardingDismissed).toBe(true);
+    await page.reload();
+    await expect(page.locator(".onboarding")).toHaveCount(0);
+  });
+
+  test("it disappears on its own once every step is done", async ({ page, request }) => {
+    await page.addInitScript(() => localStorage.setItem("n-os-palette-used", "1"));
+    await seed(
+      request,
+      workspace({
+        tasks: [task("t1", "First")],
+        habits: [{ id: "h1", title: "Read", completions: [] }],
+        accounts: [{ id: "a", title: "Cash", opening: 0, currency: "USD" }],
+      }),
+    );
+    await page.goto("/#today");
+    await expect(page.locator(".search-trigger")).toBeVisible();
+    await expect(page.locator(".onboarding")).toHaveCount(0);
+  });
+});
