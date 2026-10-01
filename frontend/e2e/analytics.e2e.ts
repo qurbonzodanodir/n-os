@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { addDays, seed, task, today, workspace } from "./helpers";
+import { addDays, seed, stored, task, today, workspace } from "./helpers";
 
 const month = today().slice(0, 7);
 const account = { id: "cash", title: "Cash", opening: 0, currency: "USD" };
@@ -73,4 +73,34 @@ test("finance compares spending with the previous month", async ({ page, request
   );
   await page.goto("/#finance");
   await expect(page.locator(".compare-row", { hasText: "Expense" })).toContainText("+100%");
+});
+
+test("recurring transactions are created on schedule and never duplicated", async ({ page, request }) => {
+  await page.clock.setFixedTime(new Date("2026-03-15T08:00:00Z"));
+  const template = { id: "r1", title: "Rent", kind: "expense", amount: 50_000, accountId: "cash", repeat: "monthly", start: "2026-01-10" };
+  await seed(request, workspace({ accounts: [account] }, { recurringTransactions: [template] }));
+  await page.goto("/#finance");
+  await expect
+    .poll(async () => (await stored(request)).transactions.map((row: { date: string }) => row.date))
+    .toEqual(["2026-01-10", "2026-02-10", "2026-03-10"]);
+
+  await page.reload();
+  await expect(page.locator(".recurring-card")).toContainText("Rent");
+  await page.waitForTimeout(500);
+  expect((await stored(request)).transactions).toHaveLength(3);
+});
+
+test("a recurring entry can be added from the finance page", async ({ page, request }) => {
+  await page.clock.setFixedTime(new Date("2026-03-15T08:00:00Z"));
+  await seed(request, workspace({ accounts: [account] }));
+  await page.goto("/#finance");
+  const form = page.locator(".recurring-form");
+  await form.locator('input[name="title"]').fill("Gym");
+  await form.locator('input[name="amount"]').fill("20");
+  await form.locator('input[name="start"]').fill("2026-03-01");
+  await form.locator('button[type="submit"]').click();
+  await expect
+    .poll(async () => (await stored(request)).settings.recurringTransactions?.[0])
+    .toMatchObject({ title: "Gym", amount: 2000, repeat: "monthly" });
+  await expect.poll(async () => (await stored(request)).transactions[0]).toMatchObject({ title: "Gym", date: "2026-03-01", amount: 2000 });
 });

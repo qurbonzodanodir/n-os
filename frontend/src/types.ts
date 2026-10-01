@@ -1,3 +1,5 @@
+import type { RecurringTemplate } from "./domain/recurring";
+
 export type Language = "ru" | "en";
 export type Theme = "light" | "dark" | "system";
 export type TaskStatus = "todo" | "progress" | "completed" | "cancelled";
@@ -146,6 +148,7 @@ export interface WorkspaceSettings {
     previous: unknown;
     categories: Array<{ name: string; amount: number }>;
   }>;
+  recurringTransactions?: RecurringTemplate[];
   taskViews?: Array<{
     id: string;
     name: string;

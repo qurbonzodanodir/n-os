@@ -55,3 +55,4 @@ dialog{border:1px solid var(--line);padding:0;width:min(590px,calc(100% - 28px))
 @media(max-width:760px){.cal-chip[draggable=true],.event-slot{cursor:default}}
 .task-draggable{transition:transform .12s ease-out}.task-draggable.swipe-complete{box-shadow:inset 5px 0 0 #187955}.task-draggable.swipe-postpone{box-shadow:inset -5px 0 0 #c98a1b}
 @media(max-width:760px){.task-draggable{touch-action:pan-y}}
+.recurring-card{margin-top:18px}.recurring-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}.recurring-form input,.recurring-form select{min-height:42px;padding:8px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--field);color:var(--ink);font:inherit}

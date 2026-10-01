@@ -20,6 +20,10 @@ describe("LegacyFinancePanel", () => {
         budgets={[{ id: "budget-1", title: "Food", category: "Food", spent: "10 TJS", amount: "20 TJS", remaining: "10 TJS", percent: 50 }]}
         comparison={[{ key: "expense", current: "20 TJS", previous: "10 TJS", percent: "+100%", tone: "bad", trend: "up" }]}
         previousLabel="August"
+        recurring={[{ id: "r1", title: "Rent", kind: "expense", amount: "−500 TJS", meta: "monthly" }]}
+        today="2026-09-30"
+        onAddRecurring={() => {}}
+        onDeleteRecurring={() => {}}
         forecast={{
           month: "September",
           spent: "20 TJS",
@@ -42,6 +46,8 @@ describe("LegacyFinancePanel", () => {
     expect(html).toContain('data-type="budget"');
     expect(html).toContain("Food");
     expect(html).toContain("+100%");
+    expect(html).toContain("Rent");
+    expect(html).toContain('name="repeat"');
     expect(html).toContain("expenseForecast");
     expect(html).toContain("overBudget: 10 TJS");
   });

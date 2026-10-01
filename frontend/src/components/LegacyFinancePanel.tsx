@@ -1,3 +1,4 @@
+import type { FormEvent } from "react";
 import type { ComparisonRow } from "./LegacyReviewPanel";
 
 interface SeriesItem {
@@ -45,6 +46,23 @@ interface ForecastView {
   progress: number;
 }
 
+interface RecurringItem {
+  id: string;
+  title: string;
+  amount: string;
+  kind: string;
+  meta: string;
+}
+interface RecurringValues {
+  title: string;
+  kind: string;
+  amount: string;
+  accountId: string;
+  category: string;
+  repeat: string;
+  start: string;
+}
+
 interface Props {
   range: string;
   month: string;
@@ -61,6 +79,10 @@ interface Props {
   comparison: ComparisonRow[];
   previousLabel: string;
   forecast: ForecastView | null;
+  recurring: RecurringItem[];
+  today: string;
+  onAddRecurring: (values: RecurringValues) => void | Promise<void>;
+  onDeleteRecurring: (id: string) => void | Promise<void>;
   label: (key: string) => string;
   icon: (key: string) => string;
 }
@@ -82,6 +104,10 @@ export function LegacyFinancePanel(props: Props) {
     comparison,
     previousLabel,
     forecast,
+    recurring,
+    today,
+    onAddRecurring,
+    onDeleteRecurring,
     label: t,
     icon,
   } = props;
@@ -254,9 +280,69 @@ export function LegacyFinancePanel(props: Props) {
           </div>
         </aside>
       </div>
+      <article className="card glass pad recurring-card">
+        <div className="section-title">
+          <h2>{t("recurringTransactions")}</h2>
+        </div>
+        <div className="rows">
+          {recurring.map((item) => (
+            <div className="row" key={item.id}>
+              <div className="row-body">
+                <strong>{item.title}</strong>
+                <small>{item.meta}</small>
+              </div>
+              <span className={`tx-amount ${item.kind}`}>{item.amount}</span>
+              <button
+                type="button"
+                className="btn danger"
+                onClick={() => void onDeleteRecurring(item.id)}
+                aria-label={`${t("delete")} ${item.title}`}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {!recurring.length && <p className="meta">{t("recurringHint")}</p>}
+        </div>
+        <form
+          className="recurring-form"
+          onSubmit={(event: FormEvent<HTMLFormElement>) => {
+            event.preventDefault();
+            const form = event.currentTarget;
+            const values = Object.fromEntries(new FormData(form)) as unknown as RecurringValues;
+            void onAddRecurring(values);
+            form.reset();
+          }}
+        >
+          <input name="title" placeholder={t("title")} required maxLength={80} aria-label={t("title")} />
+          <select name="kind" aria-label={t("kind")} defaultValue="expense">
+            <option value="expense">{t("expense")}</option>
+            <option value="income">{t("income")}</option>
+          </select>
+          <input name="amount" inputMode="decimal" placeholder={t("amount")} required aria-label={t("amount")} />
+          <select name="accountId" aria-label={t("account")} required>
+            {accounts.map((account) => (
+              <option value={account.id} key={account.id}>
+                {account.title} · {account.currency}
+              </option>
+            ))}
+          </select>
+          <input name="category" placeholder={t("category")} maxLength={60} aria-label={t("category")} />
+          <select name="repeat" aria-label={t("repeat")} defaultValue="monthly">
+            <option value="monthly">{t("monthly")}</option>
+            <option value="weekly">{t("weekly")}</option>
+          </select>
+          <input type="date" name="start" defaultValue={today} required aria-label={t("startDate")} />
+          <button type="submit" className="btn primary" disabled={!accounts.length}>
+            {t("add")}
+          </button>
+        </form>
+      </article>
     </>
   );
 }
+
+export type { RecurringItem, RecurringValues };
 
 export type { ForecastView };
 function Stat({ label, value }: { label: string; value: string }) {
