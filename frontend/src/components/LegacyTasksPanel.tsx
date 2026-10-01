@@ -1,4 +1,5 @@
-import { useState, type DragEvent, type FormEvent } from "react";
+import { useRef, useState, type DragEvent, type PointerEvent, type FormEvent } from "react";
+import { swipeIntent, type SwipeIntent } from "../domain/swipe";
 import type { BulkChanges } from "../domain/bulk";
 import type { ParsedTask } from "../domain/quickAdd";
 import type { Project, Task, TaskPriority, TaskStatus } from "../types";
@@ -39,6 +40,7 @@ interface Props {
   onQuickAdd: (text: string) => void | Promise<void>;
   onBulkUpdate: (ids: string[], changes: BulkChanges) => void | Promise<void>;
   onBulkDelete: (ids: string[]) => void | Promise<void>;
+  onSwipe: (taskId: string, intent: Exclude<SwipeIntent, null>) => void | Promise<void>;
 }
 
 const statuses: TaskStatus[] = ["todo", "progress", "completed", "cancelled"];
@@ -65,6 +67,7 @@ export function LegacyTasksPanel({
   onQuickAdd,
   onBulkUpdate,
   onBulkDelete,
+  onSwipe,
 }: Props) {
   const [draft, setDraft] = useState("");
   const [selecting, setSelecting] = useState(false);
@@ -291,6 +294,7 @@ export function LegacyTasksPanel({
                 <QuickEditor task={task} label={t} onCancel={() => setEditing(null)} onSave={onQuickSave} key={task.id} />
               ) : (
                 <TaskRow
+                  onSwipe={(intent) => void onSwipe(task.id, intent)}
                   selecting={selecting}
                   picked={picked.includes(task.id)}
                   onPick={() => toggle(task.id)}
@@ -377,6 +381,7 @@ function beginDrag(event: DragEvent, taskId: string, setDragging: (id: string) =
 }
 
 function TaskRow({
+  onSwipe,
   selecting,
   picked,
   onPick,
@@ -388,6 +393,7 @@ function TaskRow({
   onDragStart,
   onDrop,
 }: {
+  onSwipe: (intent: Exclude<SwipeIntent, null>) => void;
   selecting: boolean;
   picked: boolean;
   onPick: () => void;
@@ -401,9 +407,34 @@ function TaskRow({
 }) {
   const overdue = Boolean(task.date && task.date < today && !["completed", "cancelled"].includes(task.status));
   const completedSubtasks = (task.subtasks || []).filter((item) => item.done).length;
+  const touch = useRef<{ x: number; y: number } | null>(null);
+  const [offset, setOffset] = useState(0);
+  const finish = (event: PointerEvent<HTMLDivElement>) => {
+    const start = touch.current;
+    touch.current = null;
+    setOffset(0);
+    if (!start) return;
+    const intent = swipeIntent(event.clientX - start.x, event.clientY - start.y);
+    if (intent) onSwipe(intent);
+  };
   return (
     <div
-      className={`row task-draggable ${task.status === "completed" ? "done" : ""}`}
+      className={`row task-draggable ${task.status === "completed" ? "done" : ""} ${offset > 24 ? "swipe-complete" : offset < -24 ? "swipe-postpone" : ""}`}
+      style={offset ? { transform: `translateX(${offset}px)` } : undefined}
+      onPointerDown={(event) => {
+        if (event.pointerType === "touch" && !selecting) touch.current = { x: event.clientX, y: event.clientY };
+      }}
+      onPointerMove={(event) => {
+        if (!touch.current) return;
+        const dx = event.clientX - touch.current.x;
+        const dy = event.clientY - touch.current.y;
+        setOffset(Math.abs(dx) > Math.abs(dy) * 1.5 ? Math.max(-120, Math.min(120, dx)) : 0);
+      }}
+      onPointerUp={finish}
+      onPointerCancel={() => {
+        touch.current = null;
+        setOffset(0);
+      }}
       draggable
       onDragStart={(event) => beginDrag(event, task.id, onDragStart)}
       onDragOver={(event) => event.preventDefault()}

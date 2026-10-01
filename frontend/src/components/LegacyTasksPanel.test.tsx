@@ -30,6 +30,7 @@ describe("LegacyTasksPanel", () => {
         onQuickAdd={() => {}}
         onBulkUpdate={() => {}}
         onBulkDelete={() => {}}
+        onSwipe={() => {}}
       />,
     );
     expect(html).toContain('data-action="task-mode"');
@@ -74,6 +75,7 @@ describe("LegacyTasksPanel", () => {
         onQuickAdd={() => {}}
         onBulkUpdate={() => {}}
         onBulkDelete={() => {}}
+        onSwipe={() => {}}
       />,
     );
     for (const status of ["todo", "progress", "completed", "cancelled"]) expect(html).toContain(status);

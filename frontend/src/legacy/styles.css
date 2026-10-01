@@ -53,3 +53,5 @@ dialog{border:1px solid var(--line);padding:0;width:min(590px,calc(100% - 28px))
 .bulk-bar{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 14px;margin-bottom:14px;border:1px solid var(--line);border-radius:16px}.bulk-bar select,.bulk-bar input[type=date]{min-height:38px;padding:6px 10px;border:1px solid var(--rule);border-radius:12px;background:var(--field);color:var(--ink);font:inherit}.bulk-bar>strong{margin-right:auto}.bulk-check{width:20px;height:20px;flex:0 0 auto}
 .cal-day.drop-over,.week-column.drop-over{outline:2px dashed var(--blue);outline-offset:-3px;background:var(--blue-soft)}.cal-chip[draggable=true]{cursor:grab}.event-slot{cursor:grab}.event-slot:active{cursor:grabbing}
 @media(max-width:760px){.cal-chip[draggable=true],.event-slot{cursor:default}}
+.task-draggable{transition:transform .12s ease-out}.task-draggable.swipe-complete{box-shadow:inset 5px 0 0 #187955}.task-draggable.swipe-postpone{box-shadow:inset -5px 0 0 #c98a1b}
+@media(max-width:760px){.task-draggable{touch-action:pan-y}}

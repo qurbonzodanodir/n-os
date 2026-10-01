@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { seed, stored, task, workspace } from "./helpers";
+import { addDays, seed, stored, task, today, workspace } from "./helpers";
 
 test("command palette runs commands and finds records with the keyboard", async ({ page, request }) => {
   await seed(request, workspace({ tasks: [task("t1", "Renew passport")] }));
@@ -65,4 +65,42 @@ test("shortcuts are ignored while typing", async ({ page, request }) => {
   await page.locator("#quick-add-task").pressSequentially("n? g");
   await expect(page.locator("#quick-add-task")).toHaveValue("n? g");
   await expect(page.locator("dialog[open]")).toHaveCount(0);
+});
+
+test.describe("mobile swipes", () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true });
+
+  const swipe = (page: import("@playwright/test").Page, title: string, dx: number) =>
+    page.evaluate(
+      ([name, distance]) => {
+        const row = [...document.querySelectorAll<HTMLElement>(".row.task-draggable")].find((node) =>
+          node.textContent?.includes(name as string),
+        );
+        if (!row) throw new Error("row not found");
+        const box = row.getBoundingClientRect();
+        const x = box.left + box.width / 2;
+        const y = box.top + box.height / 2;
+        const fire = (type: string, offset: number) =>
+          row.dispatchEvent(
+            new PointerEvent(type, { pointerType: "touch", clientX: x + offset, clientY: y, bubbles: true, isPrimary: true }),
+          );
+        fire("pointerdown", 0);
+        fire("pointermove", (distance as number) / 2);
+        fire("pointerup", distance as number);
+      },
+      [title, dx],
+    );
+
+  test("swiping a task right completes it and left postpones it", async ({ page, request }) => {
+    await seed(request, workspace({ tasks: [task("a", "Swipe done"), task("b", "Swipe later")] }));
+    await page.goto("/#tasks");
+    await expect(page.getByText("Swipe done")).toBeVisible();
+    await swipe(page, "Swipe done", 140);
+    await expect.poll(async () => (await stored(request)).tasks.find((row: { id: string }) => row.id === "a").status).toBe("completed");
+    await expect(page.getByText("Swipe later")).toBeVisible();
+    await swipe(page, "Swipe later", -140);
+    await expect
+      .poll(async () => (await stored(request)).tasks.find((row: { id: string }) => row.id === "b").date)
+      .toBe(addDays(today(), 1));
+  });
 });
