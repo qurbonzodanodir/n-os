@@ -12,12 +12,15 @@ const base = {
   mode: "month",
   monthLabel: "September 2026",
   weekdayLabels: ["Mon"],
-  monthDays: [{ date: "2026-09-30", day: 30, selected: true, today: true, outside: false, eventTitles: ["Meet"], taskCount: 1 }],
+  monthDays: [
+    { date: "2026-09-30", day: 30, selected: true, today: true, outside: false, events: [{ id: "event-1", title: "Meet" }], taskCount: 1 },
+  ],
   weekDays: [agenda],
   agendaDays: [agenda],
   selectedAgenda: agenda,
   label: (key: string) => key,
   formatDate: (value?: string) => value || "—",
+  onReschedule: () => {},
 };
 
 describe("LegacyCalendarPanel", () => {
@@ -26,6 +29,7 @@ describe("LegacyCalendarPanel", () => {
     expect(html).toContain('data-action="calendar-mode"');
     expect(html).toContain('data-action="calendar-prev"');
     expect(html).toContain('data-action="date"');
+    expect(html).toContain('draggable="true"');
     expect(html).toContain('data-action="add-date"');
     expect(html).toContain('data-action="task-check"');
   });

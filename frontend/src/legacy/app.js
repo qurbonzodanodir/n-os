@@ -27,6 +27,7 @@ import {LegacyActionDialog} from '../components/LegacyActionDialog.tsx';
 import {LegacySurahReader} from '../components/LegacySurahReader.tsx';
 import {LegacyItemEditor} from '../components/LegacyItemEditor.tsx';
 import {LegacyDetailPanel} from '../components/LegacyDetailPanel.tsx';
+import {rescheduleItem} from '../domain/reschedule.ts';
 import {deleteTasks,updateTasks} from '../domain/bulk.ts';
 import {LegacyShortcutsDialog} from '../components/LegacyShortcutsDialog.tsx';
 import {resolveShortcut} from '../domain/shortcuts.ts';
@@ -107,11 +108,12 @@ function renderCalendar(){
  const offset=(new Date(start+'T12:00:00Z').getUTCDay()-Number(w().settings.weekStart)+7)%7;
  const dates=Array.from({length:42},(_,i)=>day(start,i-offset));
  const agenda=date=>({date,label:dateLabel(date,{weekday:'short',day:'numeric',month:'long'}),events:w().events.filter(e=>occurs(e,date)).sort((a,b)=>a.time.localeCompare(b.time)),tasks:w().tasks.filter(x=>x.date===date&&x.status!=='cancelled')});
- calendarViewModel={mode:calendarMode,monthLabel:dateLabel(selected,{month:'long',year:'numeric'}),weekdayLabels:dates.slice(0,7).map(d=>dateLabel(d,{weekday:'short'})),monthDays:dates.map(date=>{const events=w().events.filter(e=>occurs(e,date)),tasks=w().tasks.filter(x=>x.date===date&&x.status!=='cancelled');return {date,day:Number(date.slice(8)),selected:date===selected,today:date===today(),outside:date.slice(0,7)!==start.slice(0,7),eventTitles:events.slice(0,2).map(e=>e.title),taskCount:tasks.length};}),weekDays:weekDays(selected,w().settings.weekStart).map(date=>({...agenda(date),tasks:w().tasks.filter(x=>x.date===date)})),agendaDays:Array.from({length:calendarMode==='day'?1:7},(_,i)=>agenda(day(selected,i))),selectedAgenda:agenda(selected)};
+ calendarViewModel={mode:calendarMode,monthLabel:dateLabel(selected,{month:'long',year:'numeric'}),weekdayLabels:dates.slice(0,7).map(d=>dateLabel(d,{weekday:'short'})),monthDays:dates.map(date=>{const events=w().events.filter(e=>occurs(e,date)),tasks=w().tasks.filter(x=>x.date===date&&x.status!=='cancelled');return {date,day:Number(date.slice(8)),selected:date===selected,today:date===today(),outside:date.slice(0,7)!==start.slice(0,7),events:events.slice(0,2).map(e=>({id:e.id,title:e.title})),taskCount:tasks.length};}),weekDays:weekDays(selected,w().settings.weekStart).map(date=>({...agenda(date),tasks:w().tasks.filter(x=>x.date===date)})),agendaDays:Array.from({length:calendarMode==='day'?1:7},(_,i)=>agenda(day(selected,i))),selectedAgenda:agenda(selected)};
  return head('calendar','event')+'<div id="react-calendar-view"></div>';
 }
 let calendarViewModel=null;
-function mountCalendarView(){const root=$('#react-calendar-view');if(!root||!calendarViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyCalendarPanel,{...calendarViewModel,label:t,formatDate:value=>dateLabel(value)}));}
+function mountCalendarView(){const root=$('#react-calendar-view');if(!root||!calendarViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyCalendarPanel,{...calendarViewModel,label:t,formatDate:value=>dateLabel(value),onReschedule:rescheduleCalendarItem}));}
+async function rescheduleCalendarItem(item,from,to){const next=rescheduleItem(w(),item,from,to,today());if(next===w())return;validate(next);store.data=next;if(await persist())toast(t('saved'));}
 function rangeDays(start,end){const result=[];for(let d=start;d<=end;d=day(d,1))result.push(d);return result;}
 function monthEnd(month){return day(`${month}-01`,new Date(Date.UTC(Number(month.slice(0,4)),Number(month.slice(5)),0)).getUTCDate()-1);}
 function shiftMonth(month,delta){const d=new Date(`${month}-01T12:00:00Z`);d.setUTCMonth(d.getUTCMonth()+delta);return iso(d).slice(0,7);}

@@ -1,3 +1,5 @@
+import { useState, type DragEvent } from "react";
+import type { DragItem } from "../domain/reschedule";
 import type { Event, Task } from "../types";
 
 interface AgendaDay {
@@ -13,7 +15,7 @@ interface MonthDay {
   selected: boolean;
   today: boolean;
   outside: boolean;
-  eventTitles: string[];
+  events: Array<{ id: string; title: string }>;
   taskCount: number;
 }
 
@@ -27,10 +29,36 @@ interface Props {
   selectedAgenda: AgendaDay;
   label: (key: string) => string;
   formatDate: (value?: string) => string;
+  onReschedule: (item: DragItem, from: string, to: string) => void | Promise<void>;
 }
 
 export function LegacyCalendarPanel(props: Props) {
-  const { mode, monthDays, weekdayLabels, weekDays, agendaDays, selectedAgenda, label: t } = props;
+  const { mode, monthDays, weekdayLabels, weekDays, agendaDays, selectedAgenda, label: t, onReschedule } = props;
+  const [drag, setDrag] = useState<{ item: DragItem; from: string } | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+  const start = (event: DragEvent, item: DragItem, from: string) => {
+    event.dataTransfer.effectAllowed = "move";
+    event.dataTransfer.setData("text/plain", item.id);
+    setDrag({ item, from });
+  };
+  const target = (date: string) => ({
+    onDragOver: (event: DragEvent) => {
+      if (!drag) return;
+      event.preventDefault();
+      setOver(date);
+    },
+    onDragLeave: () => setOver((current) => (current === date ? null : current)),
+    onDrop: (event: DragEvent) => {
+      event.preventDefault();
+      if (drag) void onReschedule(drag.item, drag.from, date);
+      setDrag(null);
+      setOver(null);
+    },
+  });
+  const end = () => {
+    setDrag(null);
+    setOver(null);
+  };
   const controls = <CalendarControls {...props} />;
   if (mode === "month")
     return (
@@ -44,23 +72,39 @@ export function LegacyCalendarPanel(props: Props) {
               </div>
             ))}
             {monthDays.map((day) => (
-              <button
-                type="button"
+              <div
+                role="button"
+                tabIndex={0}
                 data-action="date"
                 data-value={day.date}
-                className={`cal-day ${day.selected ? "selected" : ""} ${day.today ? "today" : ""} ${day.outside ? "out" : ""}`}
+                className={`cal-day ${day.selected ? "selected" : ""} ${day.today ? "today" : ""} ${day.outside ? "out" : ""} ${over === day.date ? "drop-over" : ""}`}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
+                {...target(day.date)}
                 key={day.date}
               >
                 <strong>{day.day}</strong>
-                {day.eventTitles.map((title, index) => (
-                  <small key={`${title}-${index}`}>{title}</small>
+                {day.events.map((item) => (
+                  <small
+                    className="cal-chip"
+                    draggable
+                    onDragStart={(event) => start(event, { type: "event", id: item.id }, day.date)}
+                    onDragEnd={end}
+                    key={item.id}
+                  >
+                    {item.title}
+                  </small>
                 ))}
                 {day.taskCount > 0 && (
                   <small>
                     {t("tasks")}: {day.taskCount}
                   </small>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         </article>
@@ -75,19 +119,35 @@ export function LegacyCalendarPanel(props: Props) {
         {controls}
         <div className="week-columns">
           {weekDays.map((day) => (
-            <section className="week-column" key={day.date}>
+            <section className={`week-column ${over === day.date ? "drop-over" : ""}`} {...target(day.date)} key={day.date}>
               <h3>{day.label}</h3>
               {day.events.map((event) => (
-                <button type="button" className="event-block" data-action="detail" data-type="event" data-id={event.id} key={event.id}>
-                  <small>{event.time}</small>
-                  <strong>{event.title}</strong>
-                </button>
+                <div
+                  className="event-slot"
+                  draggable
+                  onDragStart={(e) => start(e, { type: "event", id: event.id }, day.date)}
+                  onDragEnd={end}
+                  key={event.id}
+                >
+                  <button type="button" className="event-block" data-action="detail" data-type="event" data-id={event.id}>
+                    <small>{event.time}</small>
+                    <strong>{event.title}</strong>
+                  </button>
+                </div>
               ))}
               {day.tasks.map((task) => (
-                <button type="button" className="event-block" data-action="detail" data-type="task" data-id={task.id} key={task.id}>
-                  <small>{t("task")}</small>
-                  <strong>{task.title}</strong>
-                </button>
+                <div
+                  className="event-slot"
+                  draggable
+                  onDragStart={(e) => start(e, { type: "task", id: task.id }, day.date)}
+                  onDragEnd={end}
+                  key={task.id}
+                >
+                  <button type="button" className="event-block" data-action="detail" data-type="task" data-id={task.id}>
+                    <small>{t("task")}</small>
+                    <strong>{task.title}</strong>
+                  </button>
+                </div>
               ))}
               <button type="button" className="btn icon-btn" data-action="add-date" data-value={day.date} aria-label={t("add")}>
                 +
