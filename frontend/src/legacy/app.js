@@ -27,6 +27,7 @@ import {LegacyActionDialog} from '../components/LegacyActionDialog.tsx';
 import {LegacySurahReader} from '../components/LegacySurahReader.tsx';
 import {LegacyItemEditor} from '../components/LegacyItemEditor.tsx';
 import {LegacyDetailPanel} from '../components/LegacyDetailPanel.tsx';
+import {backlinks,findNoteByTitle,outgoingLinks,searchNotes,WIKI_LINK} from '../domain/notes.ts';
 import {LegacyImportDialog} from '../components/LegacyImportDialog.tsx';
 import {planImport,transactionsToCsv} from '../domain/csv.ts';
 import {workspaceToIcs} from '../domain/ics.ts';
@@ -139,7 +140,7 @@ function habitDetailModel(h){
 }
 function genericDetailModel(type,r){
  const model={kind:'generic'},related=[];
- if(type==='note'){model.meta=[{iconName:'calendar',text:dateLabel(r.updatedAt||r.createdAt,{day:'numeric',month:'long',year:'numeric'})},...(r.folder?[{iconName:'projects',text:r.folder}]:[])];model.markdownHtml=markdown(r.body||'');}
+ if(type==='note'){model.meta=[{iconName:'calendar',text:dateLabel(r.updatedAt||r.createdAt,{day:'numeric',month:'long',year:'numeric'})},...(r.folder?[{iconName:'projects',text:r.folder}]:[])];model.markdownHtml=markdown(r.body||'');for(const row of outgoingLinks(w().notes,r))related.push(relatedModel('note',row,t('linksTo')));for(const row of backlinks(w().notes,r))related.push(relatedModel('note',row,t('mentionedIn')));}
  if(type==='task'){model.stats=[{label:t('status'),value:t(r.status)},{label:t('priority'),value:t(r.priority||'medium')},{label:t('date'),value:dateLabel(r.date,{day:'numeric',month:'long',year:'numeric'})},{label:t('subtasks'),value:`${(r.subtasks||[]).filter(x=>x.done).length}/${(r.subtasks||[]).length}`}];model.description=r.description||'';model.checklistTitle=t('subtasks');model.checklist=r.subtasks||[];}
  if(type==='event'){model.stats=[{label:t('date'),value:dateLabel(r.date,{day:'numeric',month:'long',year:'numeric'})},{label:t('time'),value:`${r.time}–${r.endTime}`},{label:t('repeat'),value:t(r.repeat||'none')},{label:t('location'),value:r.location||'—'}];model.description=r.description||'';}
  if(type==='goal'||type==='project'){
@@ -201,7 +202,7 @@ function azkarViewModel(){const counts=w().islam.azkar[today()]||{},items=azkar.
 function mountIslamView(){const root=$('#react-islam-view');if(!root||!islamViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyIslamPanel,{...islamViewModel,label:t,icon}));}
 function openSurah(id){const s=surahs.find(x=>x.id===id);if(!s)return;showReactDialog(`${s.number}. ${s.name}`,createElement(LegacySurahReader,{verses:s.verses,learned:!!w().islam.surahProgress[s.id],note:t('phoneticNote'),label:t,surahId:s.id,icon}));}
 function renderNotes(){return head('notes','note')+'<div id="react-notes-view"></div>';}
-function mountNotesView(){const root=$('#react-notes-view');if(!root)return;const notes=w().notes.filter(n=>(noteFilter==='archived'?n.archived:!n.archived)&&(noteFilter!=='pinned'||n.pinned)&&(!noteQuery||`${n.title} ${n.body} ${n.tags} ${n.folder}`.toLowerCase().includes(noteQuery.toLowerCase())));reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyNotesPanel,{notes,filter:noteFilter,query:noteQuery,label:t,formatDate:value=>dateLabel(value)}));}
+function mountNotesView(){const root=$('#react-notes-view');if(!root)return;const visible=w().notes.filter(n=>(noteFilter==='archived'?n.archived:!n.archived)&&(noteFilter!=='pinned'||n.pinned)),hits=searchNotes(visible,noteQuery);reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyNotesPanel,{hits,filter:noteFilter,query:noteQuery,label:t,formatDate:value=>dateLabel(value)}));}
 function renderLinks(type){return head(types[type],type)+`<div id="react-${types[type]}-view"></div>`;}
 function mountLinksView(type){const root=$(`#react-${types[type]}-view`);if(!root)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyLinksPanel,{type,records:w()[types[type]],projects:w().projects,tasks:w().tasks,workspace:w(),label:t,formatDate:value=>dateLabel(value)}));}
 /** @param {string} anchor @param {string} period */
@@ -314,7 +315,7 @@ async function importData(file){try{if(file.size>1500000)throw Error();const dat
 let pendingImport=null;
 function markdown(text){
  const safe=esc(text||'');const blocks=[];let html=safe.replace(/```[^\n]*\n([\s\S]*?)```/g,(_,code)=>{blocks.push('<pre><code>'+code+'</code></pre>');return `\u0000${blocks.length-1}\u0000`;});
- html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[-*] (.+)$/gm,'<div>• $1</div>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>').replace(/\n/g,'<br>');
+ html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/`([^`]+)`/g,'<code>$1</code>').replace(/^[-*] (.+)$/gm,'<div>• $1</div>').replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>').replace(new RegExp(WIKI_LINK.source,'g'),(_,title,alias)=>{const target=findNoteByTitle(w().notes.map(n=>({...n,title:esc(n.title)})),title);return target?`<button type="button" class="wikilink" data-action="detail" data-type="note" data-id="${esc(target.id)}">${alias||title}</button>`:`<span class="wikilink missing">${alias||title}</span>`;}).replace(/\n/g,'<br>');
  // The NUL delimiters are private placeholders that cannot occur in user text.
  // eslint-disable-next-line no-control-regex
  return html.replace(/\u0000(\d+)\u0000/g,(_,n)=>blocks[Number(n)]);

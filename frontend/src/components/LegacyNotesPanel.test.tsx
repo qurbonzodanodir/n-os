@@ -6,7 +6,7 @@ describe("LegacyNotesPanel", () => {
   it("keeps filters, search and detail actions available", () => {
     const html = renderToStaticMarkup(
       <LegacyNotesPanel
-        notes={[{ id: "n", title: "Idea", body: "Text", tags: "one,two", pinned: true }]}
+        hits={[{ note: { id: "n", title: "Idea", body: "Text", tags: "one,two", pinned: true }, score: 5, snippet: "Text" }]}
         filter="active"
         query="Idea"
         label={(key) => key}
@@ -17,5 +17,6 @@ describe("LegacyNotesPanel", () => {
     expect(html).toContain('id="note-query"');
     expect(html).toContain('data-action="detail"');
     expect(html).toContain("one");
+    expect(html).toContain("<mark>Idea</mark>");
   });
 });

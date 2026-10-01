@@ -1,14 +1,14 @@
-import type { Note } from "../types";
+import { highlight, type NoteHit } from "../domain/notes";
 
 interface Props {
-  notes: Note[];
+  hits: NoteHit[];
   filter: string;
   query: string;
   label: (key: string) => string;
   formatDate: (value?: string) => string;
 }
 
-export function LegacyNotesPanel({ notes, filter, query, label: t, formatDate }: Props) {
+export function LegacyNotesPanel({ hits, filter, query, label: t, formatDate }: Props) {
   return (
     <>
       <div className="toolbar">
@@ -23,7 +23,7 @@ export function LegacyNotesPanel({ notes, filter, query, label: t, formatDate }:
         <input className="filter" id="note-query" placeholder={t("search")} defaultValue={query} aria-label={t("search")} />
       </div>
       <div className="cards">
-        {notes.map((note) => (
+        {hits.map(({ note, snippet }) => (
           <button
             type="button"
             className="card glass note-card"
@@ -36,8 +36,8 @@ export function LegacyNotesPanel({ notes, filter, query, label: t, formatDate }:
             <span className="meta">
               {note.pinned ? "●" : "▧"} {note.folder || ""}
             </span>
-            <h3>{note.title}</h3>
-            <div className="snippet">{note.body}</div>
+            <h3>{query.trim() ? <Marked text={note.title} query={query} /> : note.title}</h3>
+            <div className="snippet">{query.trim() ? <Marked text={snippet} query={query} /> : note.body}</div>
             <footer>
               {(note.tags || "")
                 .split(",")
@@ -51,7 +51,7 @@ export function LegacyNotesPanel({ notes, filter, query, label: t, formatDate }:
             </footer>
           </button>
         ))}
-        {!notes.length && (
+        {!hits.length && (
           <div className="empty">
             <strong>{t("empty")}</strong>
             <p>{t("emptyHint")}</p>
@@ -63,4 +63,8 @@ export function LegacyNotesPanel({ notes, filter, query, label: t, formatDate }:
       </div>
     </>
   );
+}
+
+function Marked({ text, query }: { text: string; query: string }) {
+  return <>{highlight(text, query).map((part, index) => (part.match ? <mark key={index}>{part.text}</mark> : part.text))}</>;
 }

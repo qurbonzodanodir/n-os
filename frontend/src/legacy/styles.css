@@ -57,3 +57,4 @@ dialog{border:1px solid var(--line);padding:0;width:min(590px,calc(100% - 28px))
 @media(max-width:760px){.task-draggable{touch-action:pan-y}}
 .recurring-card{margin-top:18px}.recurring-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:14px}.recurring-form input,.recurring-form select{min-height:42px;padding:8px 12px;border:1px solid var(--rule);border-radius:12px;background:var(--field);color:var(--ink);font:inherit}
 .import-dialog{display:grid;gap:12px}.import-preview{padding:0}
+.note-card mark,.snippet mark{background:var(--blue-soft);color:inherit;border-radius:4px;padding:0 2px}.wikilink{padding:0 4px;border:0;border-radius:6px;background:var(--blue-soft);color:var(--blue);font:inherit;cursor:pointer}.wikilink.missing{background:none;color:var(--muted);text-decoration:underline dotted}

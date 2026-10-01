@@ -55,3 +55,43 @@ test("exports transactions as CSV and the calendar as ICS", async ({ page, reque
   expect(ics).toContain("SUMMARY:Standup");
   expect(ics).toContain("RRULE:FREQ=DAILY");
 });
+
+test.describe("notes", () => {
+  const note = (id: string, title: string, body: string, extra: Record<string, unknown> = {}) => ({
+    id,
+    title,
+    body,
+    createdAt: today(),
+    updatedAt: today(),
+    ...extra,
+  });
+
+  test("search ranks title matches first and highlights what matched", async ({ page, request }) => {
+    await seed(
+      request,
+      workspace({ notes: [note("a", "Groceries", "buy a passport photo frame"), note("b", "Passport renewal", "forms and photos")] }),
+    );
+    await page.goto("/#notes");
+    await page.locator("#note-query").fill("passport");
+    await page.locator("#note-query").press("Enter");
+    const cards = page.locator(".note-card");
+    await expect(cards.first()).toContainText("Passport renewal");
+    await expect(cards.first().locator("mark")).toHaveText("Passport");
+  });
+
+  test("[[links]] open the target note and list backlinks", async ({ page, request }) => {
+    await seed(
+      request,
+      workspace({
+        notes: [note("a", "Trip plan", "Pack with [[Packing list]] and [[Nowhere]]"), note("b", "Packing list", "Passport, charger")],
+      }),
+    );
+    await page.goto("/#notes");
+    await page.locator(".note-card", { hasText: "Trip plan" }).click();
+    await expect(page.locator(".wikilink.missing")).toHaveText("Nowhere");
+    await page.locator("button.wikilink", { hasText: "Packing list" }).click();
+    await expect(page.locator("dialog[open]")).toContainText("Passport, charger");
+    await expect(page.locator("dialog[open]")).toContainText("Mentioned in");
+    await expect(page.locator("dialog[open]")).toContainText("Trip plan");
+  });
+});
