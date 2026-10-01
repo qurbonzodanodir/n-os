@@ -444,9 +444,11 @@ document.addEventListener('keydown',e=>{
 window.addEventListener('hashchange',()=>{if(nav.includes(location.hash.slice(1))){view=location.hash.slice(1);render();}});
 window.addEventListener('beforeunload',e=>{if(store.dirty||store.busy){e.preventDefault();e.returnValue='';}});
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change',()=>{if(w().settings.theme==='system')render();});
+if(window.__nosInstallPrompt){deferredInstallPrompt=window.__nosInstallPrompt;window.__nosInstallPrompt=null;}
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredInstallPrompt=event;updateInstallPrompt();if(view==='settings')render();});
 window.addEventListener('appinstalled',()=>{deferredInstallPrompt=null;sessionStorage.removeItem('n-os-install-dismissed');updateInstallPrompt();toast(t('installedApp'));});
-if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}));
+// The app is imported dynamically after React mounts, so the window may already be loaded.
+if('serviceWorker' in navigator){const register=()=>navigator.serviceWorker.register('/sw.js').catch(()=>{});if(document.readyState==='complete')register();else window.addEventListener('load',register,{once:true});}
 async function load(){try{await store.load();syncError=store.conflict?'conflict':'';selected=today();dashboardDate=selected;financeMonth=selected.slice(0,7);reviewDate=selected;render();scheduleWorkspaceNotifications();ensureWeeklyReport();ensureRecurring();if(launchAction&&types[launchAction]){const action=launchAction;launchAction=null;history.replaceState(null,'',location.pathname+location.hash);openEditor(action);}}catch{if(store.loaded){syncError='loadError';render();}else{reactShellRoot||=createRoot($('#app'));reactShellRoot.render(createElement(LegacyBootError,{message:t('loadError'),retryLabel:t('retry')}));}}}
 window.addEventListener('online',()=>{if(store.loaded&&store.dirty&&!store.conflict&&!store.busy)persist();else render();});
 window.addEventListener('offline',render);
