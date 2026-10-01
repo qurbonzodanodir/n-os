@@ -1,4 +1,5 @@
 import { useState, type DragEvent, type FormEvent } from "react";
+import type { BulkChanges } from "../domain/bulk";
 import type { ParsedTask } from "../domain/quickAdd";
 import type { Project, Task, TaskPriority, TaskStatus } from "../types";
 
@@ -36,6 +37,8 @@ interface Props {
   onDeleteView: (id: string) => void | Promise<void>;
   parseQuick: (text: string) => ParsedTask;
   onQuickAdd: (text: string) => void | Promise<void>;
+  onBulkUpdate: (ids: string[], changes: BulkChanges) => void | Promise<void>;
+  onBulkDelete: (ids: string[]) => void | Promise<void>;
 }
 
 const statuses: TaskStatus[] = ["todo", "progress", "completed", "cancelled"];
@@ -60,8 +63,16 @@ export function LegacyTasksPanel({
   onDeleteView,
   parseQuick,
   onQuickAdd,
+  onBulkUpdate,
+  onBulkDelete,
 }: Props) {
   const [draft, setDraft] = useState("");
+  const [selecting, setSelecting] = useState(false);
+  const [picked, setPicked] = useState<string[]>([]);
+  const toggle = (id: string) => setPicked((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]));
+  const apply = (changes: BulkChanges) => {
+    if (picked.length) void onBulkUpdate(picked, changes);
+  };
   const [dragging, setDragging] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [savingView, setSavingView] = useState(false);
@@ -165,6 +176,19 @@ export function LegacyTasksPanel({
         <button type="button" className="btn" onClick={() => setSavingView((value) => !value)}>
           {t("saveView")}
         </button>
+        {mode === "list" && (
+          <button
+            type="button"
+            className={`btn ${selecting ? "primary" : ""}`}
+            aria-pressed={selecting}
+            onClick={() => {
+              setSelecting((value) => !value);
+              setPicked([]);
+            }}
+          >
+            {t("select")}
+          </button>
+        )}
         {activeSavedView && (
           <button type="button" className="btn danger" onClick={() => void onDeleteView(activeSavedView)} aria-label={t("deleteView")}>
             ×
@@ -192,6 +216,69 @@ export function LegacyTasksPanel({
           </button>
         </form>
       )}
+      {mode === "list" && selecting && (
+        <div className="bulk-bar glass" role="toolbar" aria-label={t("select")}>
+          <strong>
+            {t("selectedCount")}: {picked.length}
+          </strong>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => setPicked(picked.length === tasks.length ? [] : tasks.map((task) => task.id))}
+          >
+            {t("selectAll")}
+          </button>
+          <select
+            aria-label={t("status")}
+            value=""
+            disabled={!picked.length}
+            onChange={(event) => apply({ status: event.target.value as TaskStatus })}
+          >
+            <option value="">{t("status")}…</option>
+            {statuses.map((value) => (
+              <option value={value} key={value}>
+                {t(value)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={t("priority")}
+            value=""
+            disabled={!picked.length}
+            onChange={(event) => apply({ priority: event.target.value as TaskPriority })}
+          >
+            <option value="">{t("priority")}…</option>
+            {priorities.map((value) => (
+              <option value={value} key={value}>
+                {t(value)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={t("project")}
+            value=""
+            disabled={!picked.length}
+            onChange={(event) => apply({ projectId: event.target.value === "__none" ? "" : event.target.value })}
+          >
+            <option value="">{t("project")}…</option>
+            <option value="__none">{t("none")}</option>
+            {projects.map((project) => (
+              <option value={project.id} key={project.id}>
+                {project.title}
+              </option>
+            ))}
+          </select>
+          <input
+            type="date"
+            aria-label={t("date")}
+            disabled={!picked.length}
+            onChange={(event) => event.target.value && apply({ date: event.target.value })}
+          />
+          <button type="button" className="btn danger" disabled={!picked.length} onClick={() => void onBulkDelete(picked)}>
+            {t("delete")}
+          </button>
+        </div>
+      )}
       {mode === "list" ? (
         <article className="card glass">
           <div
@@ -204,6 +291,9 @@ export function LegacyTasksPanel({
                 <QuickEditor task={task} label={t} onCancel={() => setEditing(null)} onSave={onQuickSave} key={task.id} />
               ) : (
                 <TaskRow
+                  selecting={selecting}
+                  picked={picked.includes(task.id)}
+                  onPick={() => toggle(task.id)}
                   task={task}
                   today={today}
                   label={t}
@@ -287,6 +377,9 @@ function beginDrag(event: DragEvent, taskId: string, setDragging: (id: string) =
 }
 
 function TaskRow({
+  selecting,
+  picked,
+  onPick,
   task,
   today,
   label: t,
@@ -295,6 +388,9 @@ function TaskRow({
   onDragStart,
   onDrop,
 }: {
+  selecting: boolean;
+  picked: boolean;
+  onPick: () => void;
   task: Task;
   today: string;
   label: (key: string) => string;
@@ -316,9 +412,13 @@ function TaskRow({
         onDrop();
       }}
     >
-      <span className="drag-handle" aria-hidden="true">
-        ⋮⋮
-      </span>
+      {selecting ? (
+        <input type="checkbox" className="bulk-check" checked={picked} onChange={onPick} aria-label={task.title} />
+      ) : (
+        <span className="drag-handle" aria-hidden="true">
+          ⋮⋮
+        </span>
+      )}
       <TaskCheck task={task} completionDate={today} label={t} />
       <button type="button" className="row-body" data-action="detail" data-type="task" data-id={task.id}>
         <strong>{task.title}</strong>

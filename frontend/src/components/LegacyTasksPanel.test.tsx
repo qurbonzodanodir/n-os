@@ -28,6 +28,8 @@ describe("LegacyTasksPanel", () => {
         onDeleteView={() => {}}
         parseQuick={(text) => ({ title: text, date: "2026-10-01", time: "18:00", priority: "high", tags: ["work"] })}
         onQuickAdd={() => {}}
+        onBulkUpdate={() => {}}
+        onBulkDelete={() => {}}
       />,
     );
     expect(html).toContain('data-action="task-mode"');
@@ -44,6 +46,7 @@ describe("LegacyTasksPanel", () => {
     expect(html).toContain("Focus");
     expect(html).toContain("deleteView");
     expect(html).toContain('id="quick-add-task"');
+    expect(html).toContain("select");
   });
 
   it("renders every board status", () => {
@@ -69,6 +72,8 @@ describe("LegacyTasksPanel", () => {
         onDeleteView={() => {}}
         parseQuick={(text) => ({ title: text, date: "2026-10-01", time: "18:00", priority: "high", tags: ["work"] })}
         onQuickAdd={() => {}}
+        onBulkUpdate={() => {}}
+        onBulkDelete={() => {}}
       />,
     );
     for (const status of ["todo", "progress", "completed", "cancelled"]) expect(html).toContain(status);

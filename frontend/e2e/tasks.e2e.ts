@@ -87,3 +87,23 @@ test("the command palette can add a task from a sentence", async ({ page, reques
   await page.locator(".search-result", { hasText: "Add task" }).click();
   await expect.poll(async () => (await stored(request)).tasks[0]).toMatchObject({ title: "water plants", priority: "low" });
 });
+
+test("bulk actions change several tasks at once and deletion can be undone", async ({ page, request }) => {
+  await seed(request, workspace({ tasks: [task("a", "Alpha"), task("b", "Bravo"), task("c", "Charlie")] }));
+  await page.goto("/#tasks");
+  await page.getByRole("button", { name: "Select", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Alpha" }).check();
+  await page.getByRole("checkbox", { name: "Bravo" }).check();
+  await expect(page.locator(".bulk-bar")).toContainText("2");
+  await page.locator('.bulk-bar select[aria-label="Priority"]').selectOption("urgent");
+  await expect
+    .poll(async () => (await stored(request)).tasks.map((row: { priority: string }) => row.priority))
+    .toEqual(["urgent", "urgent", "medium"]);
+
+  await page.getByRole("button", { name: "Select", exact: true }).click();
+  await page.getByRole("checkbox", { name: "Charlie" }).check();
+  await page.locator(".bulk-bar").getByRole("button", { name: "Delete" }).click();
+  await expect.poll(async () => (await stored(request)).tasks.length).toBe(2);
+  await page.locator('[data-action="undo"]').click();
+  await expect.poll(async () => (await stored(request)).tasks.length).toBe(3);
+});
