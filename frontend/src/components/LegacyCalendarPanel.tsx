@@ -179,6 +179,9 @@ function CalendarControls({ mode, monthLabel, label: t }: Props) {
           ))}
         </div>
         <span className="spacer" />
+        <button type="button" className="btn" data-action="export-ics">
+          <span>{t("exportIcs")}</span>
+        </button>
         <button type="button" className="btn" data-action="calendar-today">
           <span>{t("today")}</span>
         </button>

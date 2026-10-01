@@ -27,6 +27,9 @@ import {LegacyActionDialog} from '../components/LegacyActionDialog.tsx';
 import {LegacySurahReader} from '../components/LegacySurahReader.tsx';
 import {LegacyItemEditor} from '../components/LegacyItemEditor.tsx';
 import {LegacyDetailPanel} from '../components/LegacyDetailPanel.tsx';
+import {LegacyImportDialog} from '../components/LegacyImportDialog.tsx';
+import {planImport,transactionsToCsv} from '../domain/csv.ts';
+import {workspaceToIcs} from '../domain/ics.ts';
 import {materializeRecurring} from '../domain/recurring.ts';
 import {postponeDate} from '../domain/swipe.ts';
 import {rescheduleItem} from '../domain/reschedule.ts';
@@ -302,6 +305,9 @@ async function persist(){
 }
 function toast(message,withUndo=false){clearTimeout(toastTimer);const root=$('#toast');reactToastRoot||=(createRoot(root));flushSync(()=>reactToastRoot.render(createElement(LegacyToast,{message,withUndo,label:t})));root.classList.add('show');toastTimer=setTimeout(()=>root.classList.remove('show'),withUndo?12000:4000);}
 function go(v){if(!nav.includes(v))return;view=v;history.pushState(null,'','#'+v);if($('#dialog').open)closeDialog();render();window.scrollTo(0,0);}
+function downloadFile(content,name,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+function openCsvImport(){if(!w().accounts.length){toast(t('accountNeeded'));return openEditor('account');}showReactDialog(t('importCsv'),createElement(LegacyImportDialog,{accounts:w().accounts.map(a=>({id:a.id,title:a.title,currency:a.currency})),plan:(accountId,rows)=>{const p=planImport(w(),accountId,rows,today(),()=>'x');return {fresh:p.fresh.length,duplicates:p.duplicates};},onConfirm:importBankRows,label:t,formatMoney:(minor,currency)=>money(minor,currency)}));}
+async function importBankRows(accountId,rows){const plan=planImport(w(),accountId,rows,today(),id);if(!plan.fresh.length)return;const next=structuredClone(w());next.transactions.push(...plan.fresh);validate(next);undo=structuredClone(w());store.data=next;closeDialog();if(await persist())toast(`${t('imported')}: ${plan.fresh.length}`,true);}
 function exportData(){const blob=new Blob([JSON.stringify(w(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`n-os-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function hasLegacy(){try{return !!localStorage.getItem('nodir-os-v1');}catch{return false;}}
 async function importData(file){try{if(file.size>1500000)throw Error();const data=validate(JSON.parse(await file.text()));showReactDialog(t('import'),createElement(LegacyActionDialog,{message:t('importAsk'),actions:[{key:'export',label:t('export'),action:'export'},{key:'cancel',label:t('cancel'),action:'close'},{key:'import',label:t('import'),action:'confirm-import',primary:true}]}));pendingImport=data;}catch{toast(t('fileError'));}}
@@ -396,6 +402,9 @@ document.addEventListener('click',async event=>{
  if(action==='confirm-delete')return deleteItem();
  if(action==='undo'&&undo){store.data=undo;undo=null;await persist();toast(t('saved'));return;}
  if(action==='export')return exportData();
+ if(action==='export-csv')return downloadFile(transactionsToCsv(w()),`n-os-transactions-${today()}.csv`,'text/csv;charset=utf-8');
+ if(action==='export-ics')return downloadFile(workspaceToIcs(w()),`n-os-calendar-${today()}.ics`,'text/calendar;charset=utf-8');
+ if(action==='import-csv')return openCsvImport();
  if(action==='import'){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=()=>input.files[0]&&importData(input.files[0]);input.click();return;}
  if(action==='migrate'){try{pendingImport=migrateLegacy(JSON.parse(localStorage.getItem('nodir-os-v1')));showReactDialog(t('migrate'),createElement(LegacyActionDialog,{message:t('migration'),note:t('importAsk'),actions:[{key:'export',label:t('export'),action:'export'},{key:'cancel',label:t('cancel'),action:'close'},{key:'import',label:t('import'),action:'confirm-import',primary:true}]}));}catch{toast(t('fileError'));}return;}
  if(action==='confirm-import'&&pendingImport){store.data=pendingImport;pendingImport=null;if(await persist())closeDialog();return;}

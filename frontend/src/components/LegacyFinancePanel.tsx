@@ -125,6 +125,12 @@ export function LegacyFinancePanel(props: Props) {
         <span className="spacer" />
         <AddButton type="account" label={t("account")} icon={icon} />
         <AddButton type="budget" label={t("budget")} icon={icon} />
+        <button type="button" className="btn" data-action="import-csv">
+          <span>{t("importCsv")}</span>
+        </button>
+        <button type="button" className="btn" data-action="export-csv">
+          <span>{t("exportCsv")}</span>
+        </button>
       </div>
       <div className="stat-grid">
         <Stat label={`${t("balance")} · ${currency}`} value={balance} />
