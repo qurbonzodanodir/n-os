@@ -27,6 +27,8 @@ import {LegacyActionDialog} from '../components/LegacyActionDialog.tsx';
 import {LegacySurahReader} from '../components/LegacySurahReader.tsx';
 import {LegacyItemEditor} from '../components/LegacyItemEditor.tsx';
 import {LegacyDetailPanel} from '../components/LegacyDetailPanel.tsx';
+import {LegacyDebtsPanel} from '../components/LegacyDebtsPanel.tsx';
+import {debtPaid,debtProgress,debtRemaining,debtSummaries} from '../domain/debts.ts';
 import {backlinks,findNoteByTitle,outgoingLinks,searchNotes,WIKI_LINK} from '../domain/notes.ts';
 import {LegacyImportDialog} from '../components/LegacyImportDialog.tsx';
 import {planImport,transactionsToCsv} from '../domain/csv.ts';
@@ -43,11 +45,11 @@ const store=new WorkspaceStore();
 const developmentHeaders=import.meta.env.DEV?{'X-User-Id':'local-owner'}:{};
 const $=(s,root=document)=>root.querySelector(s);
 const esc=(v='')=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const nav=['today','tasks','calendar','habits','islam','notes','goals','projects','finance','review','settings'];
-const types={task:'tasks',event:'events',habit:'habits',note:'notes',goal:'goals',project:'projects',account:'accounts',transaction:'transactions',budget:'budgets'};
+const nav=['today','tasks','calendar','habits','islam','notes','goals','projects','finance','debts','review','settings'];
+const types={task:'tasks',event:'events',habit:'habits',note:'notes',goal:'goals',project:'projects',account:'accounts',transaction:'transactions',budget:'budgets',debt:'debts'};
 let view=nav.includes(location.hash.slice(1))?location.hash.slice(1):'today';
 let launchAction=new URLSearchParams(location.search).get('add');
-let selected=todayIn(),dashboardDate=selected,calendarMode='month',taskMode='list',taskFilter='all',taskPriorityFilter='all',taskSort='date',activeTaskView='',noteFilter='active',projectFilter='',noteQuery='',financeMonth=selected.slice(0,7),financeRange='month',reviewDate=selected,reviewPeriod='week';
+let selected=todayIn(),dashboardDate=selected,calendarMode='month',taskMode='list',taskFilter='all',taskPriorityFilter='all',taskSort='date',activeTaskView='',noteFilter='active',projectFilter='',noteQuery='',financeMonth=selected.slice(0,7),financeRange='month',debtFilter='all',reviewDate=selected,reviewPeriod='week';
 let detailPeriod='year',detailCursor=selected,detailItem=null;
 let syncError='',toastTimer,undo=null,editing=null,focusBefore=null;
 let deferredInstallPrompt=null;
@@ -64,7 +66,7 @@ const dateTimeLabel=value=>new Intl.DateTimeFormat(w().settings.language,{dateSt
 const money=(n,c=w().settings.currency)=>new Intl.NumberFormat(w().settings.language,{style:'currency',currency:c}).format(n/100);
 const button=(label,action,value='',cls='btn',ico='')=>`<button type="button" class="${cls}" data-action="${action}" data-value="${esc(value)}">${ico?icon(ico):''}<span>${t(label)}</span></button>`;
 const head=(key,actionType)=>`<header class="hero"><div><div class="eyebrow">n-os / ${t('workspace')}</div><h1>${t(key)}</h1></div>${actionType?button('add','add',actionType,'btn primary','plus'):''}</header>`;
-const viewMounts={today:mountTodayView,tasks:mountTasksView,calendar:mountCalendarView,habits:mountHabitsView,islam:mountIslamView,notes:mountNotesView,goals:()=>mountLinksView('goal'),projects:()=>mountLinksView('project'),finance:mountFinanceView,review:mountReviewView,settings:mountSettingsView};
+const viewMounts={today:mountTodayView,tasks:mountTasksView,calendar:mountCalendarView,habits:mountHabitsView,islam:mountIslamView,notes:mountNotesView,goals:()=>mountLinksView('goal'),projects:()=>mountLinksView('project'),finance:mountFinanceView,debts:mountDebtsView,review:mountReviewView,settings:mountSettingsView};
 if(nav.some(key=>!viewMounts[key]))throw Error('Every primary view must have a React mount');
 function render(){
   reactViewRoot?.unmount();reactViewRoot=null;
@@ -78,7 +80,7 @@ function render(){
   viewMounts[view]();
   updateInstallPrompt();
 }
-function renderView(){return ({today:renderToday,tasks:renderTasks,calendar:renderCalendar,habits:renderHabits,islam:renderIslam,notes:renderNotes,goals:()=>renderLinks('goal'),projects:()=>renderLinks('project'),finance:renderFinance,review:renderReview,settings:renderSettings})[view]();}
+function renderView(){return ({today:renderToday,tasks:renderTasks,calendar:renderCalendar,habits:renderHabits,islam:renderIslam,notes:renderNotes,goals:()=>renderLinks('goal'),projects:()=>renderLinks('project'),finance:renderFinance,debts:renderDebts,review:renderReview,settings:renderSettings})[view]();}
 function renderToday(){
   const date=dashboardDate,tasks=w().tasks.filter(x=>x.date===date&&x.status!=='cancelled'),done=tasks.filter(x=>x.status==='completed').length;
   const habits=w().habits.filter(h=>isDue(h,date)),checked=habits.filter(h=>h.completions.includes(date)).length;
@@ -228,6 +230,10 @@ function renderFinance(){
 }
 let financeViewModel=null;
 function mountFinanceView(){const root=$('#react-finance-view');if(!root||!financeViewModel)return;reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyFinancePanel,{...financeViewModel,today:today(),onAddRecurring:addRecurring,onDeleteRecurring:deleteRecurring,label:t,icon}));}
+function renderDebts(){return head('debts','debt')+'<div id="react-debts-view"></div>';}
+function mountDebtsView(){const root=$('#react-debts-view');if(!root)return;const current=today(),all=w().debts||[],visible=all.filter(debt=>{const remaining=debtRemaining(debt),overdue=remaining>0&&debt.dueDate&&debt.dueDate<current;return debtFilter==='all'||debtFilter===debt.direction||debtFilter==='overdue'&&overdue||debtFilter==='settled'&&remaining===0;}).sort((a,b)=>Number(debtRemaining(a)===0)-Number(debtRemaining(b)===0)||(a.dueDate||'9999').localeCompare(b.dueDate||'9999'));const summaries=debtSummaries(all).map(row=>({currency:row.currency,receivable:money(row.receivable,row.currency),payable:money(row.payable,row.currency),net:`${row.net>0?'+':''}${money(row.net,row.currency)}`,netTone:row.net>=0?'income':'expense'}));const debts=visible.map(debt=>{const paid=debtPaid(debt),remaining=debtRemaining(debt);return {id:debt.id,title:debt.title,direction:debt.direction,amount:money(debt.amount,debt.currency),paid:money(paid,debt.currency),remaining:money(remaining,debt.currency),remainingMinor:remaining,currency:debt.currency,dueLabel:debt.dueDate?dateLabel(debt.dueDate,{day:'numeric',month:'long',year:'numeric'}):t('noDueDate'),overdue:remaining>0&&!!debt.dueDate&&debt.dueDate<current,settled:remaining===0,progress:debtProgress(debt),note:debt.note||'',payments:[...(debt.payments||[])].sort((a,b)=>b.date.localeCompare(a.date)).map(payment=>({id:payment.id,amount:money(payment.amount,debt.currency),date:dateLabel(payment.date),note:payment.note||''}))};});reactViewRoot=createRoot(root);reactViewRoot.render(createElement(LegacyDebtsPanel,{filter:debtFilter,summaries,debts,today:current,onPayment:addDebtPayment,onDeletePayment:deleteDebtPayment,label:t}));}
+async function addDebtPayment(debtId,values){try{const debt=w().debts.find(row=>row.id===debtId),amount=toMinor(values.amount);if(!debt||amount<=0||amount>debtRemaining(debt))throw Error('amountError');undo=structuredClone(w());debt.payments.push({id:id(),amount,date:values.date,note:values.note||'',createdAt:today()});debt.updatedAt=today();validate(w());if(await persist())toast(t('saved'),true);}catch{toast(t('amountError'));}}
+async function deleteDebtPayment(debtId,paymentId){const debt=w().debts.find(row=>row.id===debtId);if(!debt)return;undo=structuredClone(w());debt.payments=debt.payments.filter(payment=>payment.id!==paymentId);debt.updatedAt=today();if(await persist())toast(t('deleted'),true);}
 function reviewBuckets(start,end,period){
  if(period==='week')return rangeDays(start,end).map(d=>({start:d,end:d,label:dateLabel(d,{weekday:'short'})}));
  if(period==='month'){const result=[];for(let d=start;d<=end;d=day(d,7)){const e=day(d,6)>end?end:day(d,6);result.push({start:d,end:e,label:`${Number(d.slice(8))}–${Number(e.slice(8))}`});}return result;}
@@ -266,7 +272,7 @@ function openEditor(type,itemId=null){
  if(['transaction','budget'].includes(type)&&!w().accounts.length){toast(t('accountNeeded'));type='account';itemId=null;}
  const item=itemId?w()[types[type]].find(r=>r.id===itemId):null;if(itemId&&!item)return;
  editing={type,id:itemId};const r=item||{},date=r.date||selected,repeat=['none','daily','weekly','monthly'];
- const fields=[fieldModel('title',r.title||'','text',[],true,type!=='transaction')],checks=[];
+ const fields=[fieldModel('title',r.title||'','text',[],true,type!=='transaction',type==='debt'?'person':'title')],checks=[];
  if(type==='task')fields.push(fieldModel('description',r.description||'','textarea',[],true),fieldModel('date',date,'date',[],false,true),fieldModel('time',r.time||'09:00','time'),fieldModel('status',r.status||'todo','select',['todo','progress','completed','cancelled']),fieldModel('priority',r.priority||'medium','select',['low','medium','high','urgent']),...linkedFieldModels(r),fieldModel('repeat',r.repeat||'none','select',repeat),fieldModel('tags',r.tags||''),fieldModel('subtasks',(r.subtasks||[]).map(s=>(s.done?'[x] ':'[ ] ')+s.title).join('\n'),'textarea',[],true));
  if(type==='event')fields.push(fieldModel('description',r.description||'','textarea',[],true),fieldModel('date',date,'date',[],false,true),fieldModel('location',r.location||''),fieldModel('time',r.time||'09:00','time',[],false,true),fieldModel('endTime',r.endTime||'10:00','time',[],false,true),fieldModel('repeat',r.repeat||'none','select',repeat),fieldModel('repeatUntil',r.repeatUntil||'','date'),fieldModel('reminder',r.reminder||0,'number'),fieldModel('taskId',r.taskId||'','select',[['','none'],...w().tasks.map(x=>[x.id,x.title])],false,false,'task'),...linkedFieldModels(r));
  if(type==='habit'){fields.push(fieldModel('goal',r.goal||'','text',[],false,false,'target'),fieldModel('startDate',r.startDate||today(),'date',[],false,true),fieldModel('endDate',r.endDate||'','date'),...linkedFieldModels(r));checks.push({key:'weekdays',label:t('weekdays'),full:true,items:[1,2,3,4,5,6,0].map((value,index)=>({name:'weekday',value,label:dateLabel(day('2026-09-21',index),{weekday:'short'}),checked:!r.weekdays?.length||r.weekdays.includes(value)}))});}
@@ -275,6 +281,7 @@ function openEditor(type,itemId=null){
  if(type==='account')fields.push(fieldModel('opening',r.opening===undefined?'0':(r.opening/100).toFixed(2)),fieldModel('currency',r.currency||w().settings.currency,'select',['TJS','USD','EUR','RUB','CNY']));
  if(type==='transaction')fields.push(fieldModel('kind',r.kind||'expense','select',['expense','income','transfer']),fieldModel('amount',r.amount?(r.amount/100).toFixed(2):'','text',[],false,true),fieldModel('date',date,'date',[],false,true),fieldModel('category',r.category||''),fieldModel('accountId',r.accountId||w().accounts[0]?.id,'select',w().accounts.map(a=>[a.id,a.title+' · '+a.currency])),fieldModel('toAccountId',r.toAccountId||'','select',[['','none'],...w().accounts.map(a=>[a.id,a.title+' · '+a.currency])]))
  if(type==='budget')fields.push(fieldModel('category',r.category||'','text',[],false,true),fieldModel('amount',r.amount?(r.amount/100).toFixed(2):'','text',[],false,true),fieldModel('monthKey',r.monthKey||financeMonth,'month',[],false,true),fieldModel('currency',r.currency||w().settings.currency,'select',['TJS','USD','EUR','RUB','CNY']));
+ if(type==='debt')fields.push(fieldModel('direction',r.direction||'owed_to_me','select',['owed_to_me','i_owe'],false,true),fieldModel('amount',r.amount?(r.amount/100).toFixed(2):'','text',[],false,true),fieldModel('currency',r.currency||w().settings.currency,'select',['TJS','USD','EUR','RUB','CNY'],false,true),fieldModel('dueDate',r.dueDate||'','date'),fieldModel('note',r.note||'','textarea',[],true));
  const related=item&&type==='project'?[{key:'tasks',label:t('tasks'),action:'project-tasks',value:item.id},...w().notes.filter(n=>n.projectId===item.id).map(n=>({key:`note-${n.id}`,label:n.title,action:'detail',type:'note',id:n.id})),...w().events.filter(e=>e.projectId===item.id).map(e=>({key:`event-${e.id}`,label:e.title,action:'detail',type:'event',id:e.id}))]:[];
  showReactDialog(t(item?'edit':'add')+' · '+t(type),createElement(LegacyItemEditor,{fields,checks,related,eventNote:type==='event'?`${t('seriesEdit')} ${t('reminderNote')}`:'',canDelete:!!item,canPreview:type==='note',renderPreview:markdown,label:t}));
 }
@@ -294,7 +301,8 @@ async function submitItem(form){
    data.opening=toMinor(data.opening);
    if(old&&old.currency!==data.currency&&w().transactions.some(x=>x.accountId===old.id||x.toAccountId===old.id))throw Error('accountUsed');
   }
-  if(['transaction','budget'].includes(type)){data.amount=toMinor(data.amount);if(data.amount<=0)throw Error('amountError');}
+  if(['transaction','budget','debt'].includes(type)){data.amount=toMinor(data.amount);if(data.amount<=0)throw Error('amountError');}
+  if(type==='debt'){data.payments=old?.payments||[];if(data.payments.reduce((sum,payment)=>sum+payment.amount,0)>data.amount)throw Error('amountError');}
   if(type==='transaction'&&data.kind==='transfer'){const a=w().accounts.find(a=>a.id===data.accountId),b=w().accounts.find(a=>a.id===data.toAccountId);if(!b||a.id===b.id||a.currency!==b.currency)throw Error('transferError');}
   const next=structuredClone(w());const r={...old,...data,id:itemId||id(),createdAt:old?.createdAt||today(),updatedAt:today()};
   if(itemId)next[types[type]]=next[types[type]].map(x=>x.id===itemId?r:x);else next[types[type]].push(r);
@@ -394,6 +402,7 @@ document.addEventListener('click',async event=>{
  if(action==='calendar-today'){selected=today();render();return;}
  if(action==='task-mode'){taskMode=value;render();return;}
  if(action==='finance-range'){financeRange=value;render();return;}
+ if(action==='debt-filter'){debtFilter=value;render();return;}
  if(action==='note-filter'){noteFilter=value;render();return;}
  if(action==='project-tasks'){projectFilter=value;return go('tasks');}
  if(action==='review-period'){reviewPeriod=value;render();return;}

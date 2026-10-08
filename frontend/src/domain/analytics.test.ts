@@ -36,6 +36,7 @@ const workspace = {
     { id: "x4", kind: "expense", amount: 500, date: "2026-08-15", accountId: "a1" },
   ],
   budgets: [{ id: "b1", title: "Food", category: "food", amount: 10000, monthKey: "2026-09", currency: "USD" }],
+  debts: [],
   reviews: [],
   islam: {},
 } as unknown as Workspace;

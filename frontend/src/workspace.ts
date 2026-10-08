@@ -24,6 +24,7 @@ export function emptyWorkspace(): Workspace {
     accounts: [],
     transactions: [],
     budgets: [],
+    debts: [],
     reviews: [],
     islam: {
       settings: {

@@ -29,6 +29,7 @@ def workspace() -> dict:
         "accounts": [],
         "transactions": [],
         "budgets": [],
+        "debts": [],
         "reviews": [],
         "islam": {},
     }
@@ -240,3 +241,51 @@ def test_records_need_unique_ids_and_titles() -> None:
     with TestClient(app) as client:
         assert put(client, f"test-{uuid4()}", duplicate, 0).status_code == 422
         assert put(client, f"test-{uuid4()}", untitled, 0).status_code == 422
+
+
+def test_workspace_accepts_a_partially_paid_debt() -> None:
+    payload = workspace()
+    payload["debts"] = [
+        {
+            "id": "debt-1",
+            "title": "Aziz",
+            "direction": "owed_to_me",
+            "amount": 10_000,
+            "currency": "TJS",
+            "dueDate": "2026-10-20",
+            "payments": [
+                {"id": "payment-1", "amount": 2_500, "date": "2026-10-08", "note": "First"}
+            ],
+        }
+    ]
+    with TestClient(app) as client:
+        response = put(client, f"test-{uuid4()}", payload, 0)
+    assert response.status_code == 200
+
+
+def test_workspace_rejects_invalid_or_overpaid_debts() -> None:
+    invalid = workspace()
+    invalid["debts"] = [
+        {
+            "id": "debt-1",
+            "title": "Aziz",
+            "direction": "unknown",
+            "amount": 10_000,
+            "currency": "TJS",
+            "payments": [],
+        }
+    ]
+    overpaid = workspace()
+    overpaid["debts"] = [
+        {
+            "id": "debt-2",
+            "title": "Bank",
+            "direction": "i_owe",
+            "amount": 5_000,
+            "currency": "TJS",
+            "payments": [{"id": "payment-1", "amount": 5_001, "date": "2026-10-08"}],
+        }
+    ]
+    with TestClient(app) as client:
+        assert put(client, f"test-{uuid4()}", invalid, 0).status_code == 422
+        assert put(client, f"test-{uuid4()}", overpaid, 0).status_code == 422

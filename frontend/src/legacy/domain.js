@@ -1,4 +1,4 @@
-export const collections = ['tasks','events','habits','notes','projects','goals','accounts','transactions','budgets','reviews'];
+export const collections = ['tasks','events','habits','notes','projects','goals','accounts','transactions','budgets','debts','reviews'];
 export const defaultIslam = () => ({
   settings:{city:'Dushanbe',country:'Tajikistan',method:3,school:1,reminderMinutes:15,notifications:false},
   prayerLogs:{},surahProgress:{},azkar:{},arabicLessons:{}
@@ -19,6 +19,7 @@ export function validate(w) {
   if(w?.schema===2){w.schema=3;w.islam=defaultIslam();}
   if (!w || w.schema!==3 || !w.settings || !['ru','en'].includes(w.settings.language)) throw Error('invalid');
   w.settings={...defaultSettings,...w.settings};
+  if(!Array.isArray(w.debts))w.debts=[];
   const defaults=defaultIslam();
   if(!w.islam||typeof w.islam!=='object')w.islam=defaults;
   w.islam.settings={...defaults.settings,...(w.islam.settings||{})};
@@ -42,6 +43,10 @@ export function validate(w) {
     if(t.kind==='transfer') { const b=w.accounts.find(a=>a.id===t.toAccountId); if(!b||b.id===a.id||a.currency!==b.currency) throw Error('transfer'); }
   }
   for(const b of w.budgets) if(!Number.isSafeInteger(b.amount)||b.amount<=0) throw Error('amount');
+  for(const debt of w.debts){
+    if(!Number.isSafeInteger(debt.amount)||debt.amount<=0||!['owed_to_me','i_owe'].includes(debt.direction)||typeof debt.currency!=='string'||!Array.isArray(debt.payments))throw Error('debt');
+    if(debt.payments.some(payment=>!payment||typeof payment.id!=='string'||!Number.isSafeInteger(payment.amount)||payment.amount<=0||typeof payment.date!=='string')||debt.payments.reduce((sum,payment)=>sum+payment.amount,0)>debt.amount)throw Error('debt');
+  }
   for(const c of ['tasks','events','notes','habits']) for(const r of w[c]) {
     if(r.projectId && !w.projects.some(p=>p.id===r.projectId)) throw Error('project');
     if(r.goalId && !w.goals.some(g=>g.id===r.goalId)) throw Error('goal');

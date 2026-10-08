@@ -110,6 +110,22 @@ export interface Budget extends IdentifiedRecord {
   createdAt?: string;
   updatedAt?: string;
 }
+export interface DebtPayment {
+  id: string;
+  amount: number;
+  date: string;
+  note?: string;
+}
+export interface Debt extends IdentifiedRecord {
+  direction: "owed_to_me" | "i_owe";
+  amount: number;
+  currency: string;
+  dueDate?: string;
+  note?: string;
+  payments: DebtPayment[];
+  createdAt?: string;
+  updatedAt?: string;
+}
 export interface Review {
   id: string;
   week: string;
@@ -173,6 +189,7 @@ export interface Workspace {
   accounts: Account[];
   transactions: Transaction[];
   budgets: Budget[];
+  debts: Debt[];
   reviews: Review[];
   islam: IslamState;
 }

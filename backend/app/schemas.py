@@ -14,6 +14,7 @@ COLLECTIONS = (
     "accounts",
     "transactions",
     "budgets",
+    "debts",
     "reviews",
 )
 
@@ -29,6 +30,9 @@ def validate_workspace(value: dict[str, Any]) -> dict[str, Any]:
     records: dict[str, list[dict[str, Any]]] = {}
     for name in COLLECTIONS:
         rows = value.get(name)
+        if name == "debts" and rows is None:
+            rows = []
+            value[name] = rows
         if not isinstance(rows, list) or len(rows) > 3_000:
             raise ValueError(f"invalid collection: {name}")
         ids: set[str] = set()
@@ -76,6 +80,32 @@ def validate_workspace(value: dict[str, Any]) -> dict[str, Any]:
     )
     if invalid_budget:
         raise ValueError("invalid budget")
+
+    for debt in records["debts"]:
+        payments = debt.get("payments")
+        invalid_debt = (
+            not isinstance(debt.get("amount"), int)
+            or debt["amount"] <= 0
+            or debt.get("direction") not in {"owed_to_me", "i_owe"}
+            or not isinstance(debt.get("currency"), str)
+            or not debt["currency"]
+            or not isinstance(payments, list)
+        )
+        if invalid_debt:
+            raise ValueError("invalid debt")
+        total_paid = 0
+        for payment in payments:
+            if (
+                not isinstance(payment, dict)
+                or not isinstance(payment.get("id"), str)
+                or not isinstance(payment.get("amount"), int)
+                or payment["amount"] <= 0
+                or not isinstance(payment.get("date"), str)
+            ):
+                raise ValueError("invalid debt payment")
+            total_paid += payment["amount"]
+        if total_paid > debt["amount"]:
+            raise ValueError("debt is overpaid")
 
     project_ids = {project["id"] for project in records["projects"]}
     goal_ids = {goal["id"] for goal in records["goals"]}

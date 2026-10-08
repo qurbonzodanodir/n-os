@@ -27,6 +27,7 @@ const fabType: Record<string, string> = {
   goals: "goal",
   projects: "project",
   finance: "transaction",
+  debts: "debt",
 };
 
 export function LegacyShellPanel({

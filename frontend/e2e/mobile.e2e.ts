@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { seed, task, workspace } from "./helpers";
 
-const views = ["today", "tasks", "calendar", "habits", "notes", "goals", "projects", "finance", "review", "settings"];
+const views = ["today", "tasks", "calendar", "habits", "notes", "goals", "projects", "finance", "debts", "review", "settings"];
 const data = () =>
   workspace(
     {

@@ -32,6 +32,7 @@ export function workspace(parts: Partial<Record<string, Row[]>> = {}, settings: 
     accounts: [],
     transactions: [],
     budgets: [],
+    debts: [],
     reviews: [],
     islam: {
       settings: { city: "Dushanbe", country: "Tajikistan", method: 3, school: 1, reminderMinutes: 15, notifications: false },

@@ -31,6 +31,7 @@ test.describe("mobile", () => {
     await expect(page).toHaveURL(/#tasks$/);
     await nav.locator('[data-action="more"]').click();
     await expect(page.locator('dialog [data-value="finance"]')).toBeVisible();
+    await expect(page.locator('dialog [data-value="debts"]')).toBeVisible();
     await expect(page.locator('dialog [data-value="review"]')).toBeVisible();
   });
 });
