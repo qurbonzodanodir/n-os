@@ -36,6 +36,24 @@ test.describe("mobile", () => {
   });
 });
 
+test.describe("compact desktop", () => {
+  test.use({ viewport: { width: 1280, height: 650 } });
+
+  test("keeps the profile inside the sidebar while the long menu scrolls", async ({ page, request }) => {
+    await seed(request, workspace());
+    await page.goto("/#tasks");
+    const sidebar = page.locator(".sidebar");
+    const footer = page.locator(".sidebar-foot");
+    const nav = page.locator(".sidebar .nav");
+    const [sidebarBox, footerBox] = await Promise.all([sidebar.boundingBox(), footer.boundingBox()]);
+    expect(sidebarBox).not.toBeNull();
+    expect(footerBox).not.toBeNull();
+    expect(footerBox!.y + footerBox!.height).toBeLessThanOrEqual(sidebarBox!.y + sidebarBox!.height + 1);
+    await expect(nav).toHaveCSS("overflow-y", "auto");
+    expect(await nav.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(true);
+  });
+});
+
 test("keyboard shortcuts navigate, complete tasks and show help", async ({ page, request }) => {
   await seed(request, workspace({ tasks: [task("t1", "First job"), task("t2", "Second job")] }));
   await page.goto("/#today");
