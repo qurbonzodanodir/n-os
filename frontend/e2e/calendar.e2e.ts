@@ -1,6 +1,11 @@
 import { expect, test } from "@playwright/test";
 import { addDays, seed, stored, task, today, workspace } from "./helpers";
 
+// Show the whole six-row month grid. In the default 720px viewport the current
+// row can sit at the bottom edge, so dragTo scrolls mid-drag and Chromium drops
+// the drop event — the tests then pass or fail depending on the date.
+test.use({ viewport: { width: 1280, height: 1200 } });
+
 const event = (extra: Record<string, unknown> = {}) => ({
   id: "e1",
   title: "Team sync",
