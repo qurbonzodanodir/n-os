@@ -46,7 +46,13 @@ docker compose up --build
 ```
 
 The container deployment must sit behind an authentication edge that replaces
-the trusted `OAI-Authenticated-User-Id` header. Do not expose it directly.
+the trusted `OAI-Authenticated-User-Id` header. Do not expose it directly: the
+frontend port binds to `127.0.0.1` by default (`HTTP_BIND`). If the edge runs
+on another host, set `HTTP_BIND=0.0.0.0` and firewall the port to the edge only.
+
+The edge must let `POST /api/v1/sms/ingest` through without a login so the phone
+forwarder can reach it; that route authenticates with its own device token and
+nginx drops any identity header sent to it.
 
 ### Deploy, rollback and restore
 
