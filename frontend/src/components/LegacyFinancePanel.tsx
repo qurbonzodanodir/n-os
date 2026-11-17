@@ -125,6 +125,9 @@ export function LegacyFinancePanel(props: Props) {
         <span className="spacer" />
         <AddButton type="account" label={t("account")} icon={icon} />
         <AddButton type="budget" label={t("budget")} icon={icon} />
+        <button type="button" className="btn" data-action="sms-inbox">
+          <span>{t("smsInbox")}</span>
+        </button>
         <button type="button" className="btn" data-action="import-csv">
           <span>{t("importCsv")}</span>
         </button>

@@ -1,8 +1,8 @@
 import json
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, field_validator
 
 COLLECTIONS = (
     "tasks",
@@ -145,3 +145,66 @@ class WorkspaceSaved(BaseModel):
 class WorkspaceHistoryItem(BaseModel):
     revision: int
     created_at: datetime
+
+
+SmsStatus = Literal["new", "imported", "dismissed"]
+
+
+class SmsIngest(BaseModel):
+    """Body sent by the phone forwarder. Field aliases cover common forwarder templates."""
+
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    sender: str = Field(
+        min_length=1, max_length=64, validation_alias=AliasChoices("sender", "from", "phone")
+    )
+    body: str = Field(
+        min_length=1, max_length=2_000, validation_alias=AliasChoices("body", "text", "message")
+    )
+    received_at: datetime | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "received_at", "receivedAt", "receivedStamp", "sentStamp", "timestamp"
+        ),
+    )
+    source: Literal["sms", "push"] = "sms"
+
+    @field_validator("received_at", mode="before")
+    @classmethod
+    def blank_timestamp_is_missing(cls, value: Any) -> Any:
+        # Forwarders leave unresolved placeholders such as "%sentStamp%" or "".
+        if isinstance(value, str) and (not value.strip() or "%" in value):
+            return None
+        return value
+
+
+class SmsIngested(BaseModel):
+    id: str
+    duplicate: bool
+
+
+class SmsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    source: str
+    sender: str
+    body: str
+    received_at: datetime
+    status: SmsStatus
+    created_at: datetime
+
+
+class SmsStatusWrite(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: SmsStatus
+
+
+class SmsTokenState(BaseModel):
+    exists: bool
+    created_at: datetime | None = None
+
+
+class SmsTokenCreated(BaseModel):
+    token: str

@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "sqlite+aiosqlite:///./.local/n-os.db"
     write_rate_limit_per_minute: int = 120
+    sms_rate_limit_per_minute: int = 30
+    sms_inbox_limit: int = 5_000
     frontend_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
 
     @property

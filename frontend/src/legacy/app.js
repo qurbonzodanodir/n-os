@@ -31,6 +31,7 @@ import {LegacyDebtsPanel} from '../components/LegacyDebtsPanel.tsx';
 import {debtPaid,debtProgress,debtRemaining,debtSummaries} from '../domain/debts.ts';
 import {backlinks,findNoteByTitle,outgoingLinks,searchNotes,WIKI_LINK} from '../domain/notes.ts';
 import {LegacyImportDialog} from '../components/LegacyImportDialog.tsx';
+import {LegacySmsInbox} from '../components/LegacySmsInbox.tsx';
 import {planImport,transactionsToCsv} from '../domain/csv.ts';
 import {workspaceToIcs} from '../domain/ics.ts';
 import {materializeRecurring} from '../domain/recurring.ts';
@@ -318,6 +319,9 @@ function toast(message,withUndo=false){clearTimeout(toastTimer);const root=$('#t
 function go(v){if(!nav.includes(v))return;view=v;history.pushState(null,'','#'+v);if($('#dialog').open)closeDialog();render();window.scrollTo(0,0);}
 function downloadFile(content,name,type){const url=URL.createObjectURL(new Blob([content],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function openCsvImport(){if(!w().accounts.length){toast(t('accountNeeded'));return openEditor('account');}showReactDialog(t('importCsv'),createElement(LegacyImportDialog,{accounts:w().accounts.map(a=>({id:a.id,title:a.title,currency:a.currency})),plan:(accountId,rows)=>{const p=planImport(w(),accountId,rows,today(),()=>'x');return {fresh:p.fresh.length,duplicates:p.duplicates};},onConfirm:importBankRows,label:t,formatMoney:(minor,currency)=>money(minor,currency)}));}
+function openSmsInbox(){if(!w().accounts.length){toast(t('accountNeeded'));return openEditor('account');}const row=d=>[{date:d.date,amount:d.amount,title:d.title}];showReactDialog(t('smsInbox'),createElement(LegacySmsInbox,{accounts:w().accounts.map(a=>({id:a.id,title:a.title,currency:a.currency})),timezone:w().settings.timezone,isDuplicate:d=>planImport(w(),d.accountId,row(d),today(),()=>'x').duplicates>0,onImport:importSmsTransaction,label:t,formatTime:s=>new Intl.DateTimeFormat(w().settings.language,{timeZone:w().settings.timezone,dateStyle:'medium',timeStyle:'short'}).format(new Date(/(Z|[+-]\d{2}:?\d{2})$/.test(s)?s:`${s}Z`))}));}
+// The dialog stays open so several messages can be reviewed; an identical transaction is not added twice.
+async function importSmsTransaction(draft){const plan=planImport(w(),draft.accountId,[{date:draft.date,amount:draft.amount,title:draft.title}],today(),id);if(!plan.fresh.length)return true;const next=structuredClone(w());next.transactions.push(...plan.fresh);validate(next);store.data=next;if(!await persist())return false;toast(t('saved'));return true;}
 async function importBankRows(accountId,rows){const plan=planImport(w(),accountId,rows,today(),id);if(!plan.fresh.length)return;const next=structuredClone(w());next.transactions.push(...plan.fresh);validate(next);undo=structuredClone(w());store.data=next;closeDialog();if(await persist())toast(`${t('imported')}: ${plan.fresh.length}`,true);}
 function exportData(){const blob=new Blob([JSON.stringify(w(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`n-os-${today()}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function hasLegacy(){try{return !!localStorage.getItem('nodir-os-v1');}catch{return false;}}
@@ -418,6 +422,7 @@ document.addEventListener('click',async event=>{
  if(action==='export-csv')return downloadFile(transactionsToCsv(w()),`n-os-transactions-${today()}.csv`,'text/csv;charset=utf-8');
  if(action==='export-ics')return downloadFile(workspaceToIcs(w()),`n-os-calendar-${today()}.ics`,'text/calendar;charset=utf-8');
  if(action==='import-csv')return openCsvImport();
+ if(action==='sms-inbox')return openSmsInbox();
  if(action==='import'){const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.onchange=()=>input.files[0]&&importData(input.files[0]);input.click();return;}
  if(action==='migrate'){try{pendingImport=migrateLegacy(JSON.parse(localStorage.getItem('nodir-os-v1')));showReactDialog(t('migrate'),createElement(LegacyActionDialog,{message:t('migration'),note:t('importAsk'),actions:[{key:'export',label:t('export'),action:'export'},{key:'cancel',label:t('cancel'),action:'close'},{key:'import',label:t('import'),action:'confirm-import',primary:true}]}));}catch{toast(t('fileError'));}return;}
  if(action==='confirm-import'&&pendingImport){store.data=pendingImport;pendingImport=null;if(await persist())closeDialog();return;}
