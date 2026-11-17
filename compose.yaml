@@ -28,9 +28,10 @@ services:
   frontend:
     build: ./frontend
     ports:
-      # Loopback only: the authentication edge on this host is the sole way in.
-      # Anyone who reaches nginx directly could forge the identity header.
-      - "${HTTP_BIND:-127.0.0.1}:${HTTP_PORT:-8080}:80"
+      # Loopback by default: the authentication edge on this host is the sole way
+      # in, because anyone who reaches nginx directly could forge the identity
+      # header. HTTP_PORT may carry an address, e.g. 127.0.0.1:8082.
+      - "${HTTP_PORT:-127.0.0.1:8080}:80"
     depends_on:
       - backend
     restart: unless-stopped
