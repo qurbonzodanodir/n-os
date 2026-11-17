@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import type { DragItem } from "../domain/reschedule";
 import type { Event, Task } from "../types";
 
@@ -34,29 +34,32 @@ interface Props {
 
 export function LegacyCalendarPanel(props: Props) {
   const { mode, monthDays, weekdayLabels, weekDays, agendaDays, selectedAgenda, label: t, onReschedule } = props;
-  const [drag, setDrag] = useState<{ item: DragItem; from: string } | null>(null);
+  // A ref, not state: dragover can fire before React re-renders after dragstart,
+  // and a stale null there would skip preventDefault and forbid the drop.
+  const drag = useRef<{ item: DragItem; from: string } | null>(null);
   const [over, setOver] = useState<string | null>(null);
   const start = (event: DragEvent, item: DragItem, from: string) => {
     event.dataTransfer.effectAllowed = "move";
     event.dataTransfer.setData("text/plain", item.id);
-    setDrag({ item, from });
+    drag.current = { item, from };
   };
   const target = (date: string) => ({
     onDragOver: (event: DragEvent) => {
-      if (!drag) return;
+      if (!drag.current) return;
       event.preventDefault();
       setOver(date);
     },
     onDragLeave: () => setOver((current) => (current === date ? null : current)),
     onDrop: (event: DragEvent) => {
       event.preventDefault();
-      if (drag) void onReschedule(drag.item, drag.from, date);
-      setDrag(null);
+      const dragged = drag.current;
+      if (dragged) void onReschedule(dragged.item, dragged.from, date);
+      drag.current = null;
       setOver(null);
     },
   });
   const end = () => {
-    setDrag(null);
+    drag.current = null;
     setOver(null);
   };
   const controls = <CalendarControls {...props} />;
