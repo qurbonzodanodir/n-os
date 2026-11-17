@@ -17,9 +17,12 @@ def reset_rate_limits() -> None:
 
 
 async def limit_writes(owner: Annotated[str, Depends(current_owner)]) -> None:
-    limit = get_settings().write_rate_limit_per_minute
+    check_rate(owner, get_settings().write_rate_limit_per_minute)
+
+
+def check_rate(key: str, limit: int) -> None:
     now = time.monotonic()
-    window = _hits[owner]
+    window = _hits[key]
     while window and now - window[0] > 60:
         window.popleft()
     if len(window) >= limit:

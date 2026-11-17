@@ -9,6 +9,7 @@ from .api import router
 from .config import get_settings
 from .database import engine
 from .models import Base
+from .sms import router as sms_router
 
 settings = get_settings()
 
@@ -49,7 +50,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.frontend_origins,
     allow_credentials=True,
-    allow_methods=["GET", "PUT", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "X-User-Id"],
 )
 app.include_router(router, prefix="/api/v1")
+app.include_router(sms_router, prefix="/api/v1/sms")

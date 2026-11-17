@@ -29,6 +29,15 @@ by the hosting authentication edge. `X-User-Id` works only in development.
 Container ports must not be publicly exposed without an authentication proxy
 that overwrites the trusted header.
 
+`POST /api/v1/sms/ingest` is the one exception: a phone forwarder cannot log in
+through the edge, so it sends `Authorization: Bearer <device token>` instead.
+The edge must let only that path through without a login. The owner creates or
+rotates the token with `POST /api/v1/sms/token` (shown once; only its SHA-256 is
+stored) and revokes it with `DELETE`. Forwarded messages land in the separate
+`sms_messages` table, never in the workspace document, so the server does not
+race the browser's revision-checked saves; the owner turns them into
+transactions from the client.
+
 ## Deferred infrastructure
 
 Redis and Celery are not runtime dependencies yet. Add them when reminders are

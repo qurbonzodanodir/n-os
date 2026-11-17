@@ -1,4 +1,5 @@
 import type { WorkspaceSettings } from "../types";
+import { LegacySmsSetup } from "./LegacySmsSetup";
 
 interface Props {
   settings: WorkspaceSettings;
@@ -105,6 +106,7 @@ export function LegacySettingsPanel({
           </button>
         )}
       </article>
+      <LegacySmsSetup label={t} />
       <article className="card glass pad" style={{ marginTop: 18 }}>
         <h2>{t("data")}</h2>
         <p className="meta" style={{ marginTop: 10 }}>
